@@ -1,0 +1,27 @@
+{
+	"orderType": "SalesReceipt",
+	"initQBItems": false,
+	"autoImportCV3Items": false,
+	"itemUpdates": {
+		"updateCV3Items": false,
+		"lastUpdate": "",
+		"updateNewOnly": true
+	},
+	"listenPort": ":8080",
+	"logging": {
+		"Level": "info",
+		"outputPath": "./qbwcLog.log"
+	},
+	"cv3Credentials": {
+		"user": "",
+		"pass": "",
+		"serviceID": ""
+	},
+	"qbwcCredentials": {
+		"user": "user",
+		"pass": "pass"
+	},
+	"serverVersion": "",
+	"qbwcVersion": "",
+	"closeConnectionMessage": "Completed"
+}

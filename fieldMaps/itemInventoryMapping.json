@@ -1,0 +1,22 @@
+{
+	"Inactive":"IsActive",
+	"New":"",
+	"SKU":"ListID",
+	"ProdID":"",
+	"Name": "Name",
+	"URLName":"",
+	"InventoryControl.InventoryControlExempt":"",
+	"InventoryControl.InventoryStatus":"",
+	"InventoryControl.InventoryOnHand":"QuantityOnHand",
+	"InventoryControl.OnOrder":"QuantityOnOrder",
+	"InventoryControl.InventoryBackorderedDate":"",
+	"InventoryControl.OutOfStock":"",
+	"Retail.Active":"",
+	"Retail.Price.StandardPrice":"SalesPrice",
+	"WholeSale.Active":"",
+	"WholeSale.StandardPrice":"",
+	"WholeSale.Qty":"",
+	"Description":"SalesDesc",
+	"DefaultCategory":"",
+	"Rating":""
+}

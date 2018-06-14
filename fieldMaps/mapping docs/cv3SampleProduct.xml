@@ -1,0 +1,76 @@
+        <product inactive="false" out_of_season="false" tax_exempt="false" text_field="false" hidden="false" featured="false" new="false" comparable="false" google_checkout_exempt="false" content_only="false" is_donation="false" kit="false" allow_fractional_qty="false">
+            <SKU>0001</SKU>
+            <ProdID>1</ProdID>
+            <Name>Cookie Tin</Name>
+            <URLName>cookie_tin</URLName>
+            <Description>If you are looking for an attractive tin to send to that special someone, HERE IT IS! You cannot go wrong with our Holiday Tins.</Description>
+            <Keywords></Keywords>
+            <Brand></Brand>
+            <Manufacturer></Manufacturer>
+            <Rating></Rating>
+            <Images replace_existing="false">
+                <Image inactive="false">
+                    <Thumbnail>/images/uploads/1_1_thumb.jpg</Thumbnail>
+                    <Large>/images/uploads/1_1_large.jpg</Large>
+                    <PopUp>/images/uploads/1_1_popup.jpg</PopUp>
+                    <Title></Title>
+                    <Type>product</Type>
+                </Image>
+            </Images>
+            <Retail active="true">
+                <Price price_category="Retail">
+                    <StandardPrice>13.9500</StandardPrice>
+                    <SpecialPrice>0.00</SpecialPrice>
+                </Price>
+            </Retail>
+            <Wholesale active="true">
+                <StandardPrice>49.9500</StandardPrice>
+                <Qty>24</Qty>
+            </Wholesale>
+            <InventoryControl ignore_backorder="false" inventory_control_exempt="false">
+                <Status>In Stock</Status>
+                <Inventory>7</Inventory>
+                <OutOfStockPoint>0</OutOfStockPoint>
+                <OnOrder>0</OnOrder>
+            </InventoryControl>
+            <QuantityRestrictions>
+                <MinimumQuantity>0</MinimumQuantity>
+                <MaximumQuantity>0</MaximumQuantity>
+                <SellInSets>
+                    <QuantityInSet>0</QuantityInSet>
+                    <NumIterationsDisplayed>0</NumIterationsDisplayed>
+                </SellInSets>
+            </QuantityRestrictions>
+            <Weight>
+                <ShipWeight>0.00</ShipWeight>
+                <DisplayWeight>5</DisplayWeight>
+                <DisplayUnit>oz</DisplayUnit>
+            </Weight>
+            <Shipping>
+                <ShipPreference>tables</ShipPreference>
+                <FixedRate>0.00</FixedRate>
+                <PromoFixedRate>0.00</PromoFixedRate>
+            </Shipping>
+            <Meta>
+            <Keywords>Cookie Tin</Keywords>
+            <Title></Title>
+            <Description></Description>
+            </Meta>
+            <Categories replace_existing="true">
+                <ID>1</ID>
+                <ID>2</ID>
+                <ID>6</ID>
+                <ID>3</ID>
+                <ID>5</ID>
+                <ID>7</ID>
+            </Categories>
+            <DefaultCategory>6</DefaultCategory>
+            <CustomAPIProducts>
+                <SKU>ABC123</SKU>
+                <SKU>ABC456</SKU>
+            </CustomAPIProducts>
+            <SubProducts active="false">
+            </SubProducts>
+            <Attributes active="false">
+            </Attributes>
+        </product>
