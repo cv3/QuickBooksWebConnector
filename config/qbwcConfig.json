@@ -13,13 +13,13 @@
 		"outputPath": "./qbwcLog.log"
 	},
 	"cv3Credentials": {
-		"user": "",
-		"pass": "",
-		"serviceID": ""
+		"user": "cv3_webservice_username",
+		"pass": "cv3_webservice_password",
+		"serviceID": "cv3_webservice_id"
 	},
 	"qbwcCredentials": {
-		"user": "user",
-		"pass": "pass"
+		"user": "qbwc_username",
+		"pass": "qbwc_password"
 	},
 	"serverVersion": "",
 	"qbwcVersion": "",

@@ -905,7 +905,7 @@ func AddReceiptItem(prod interface{}, item *gabs.Container, skus map[string]inte
 			}
 		}
 		if CheckPath(itemFieldMap["Quantity"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).Quantity = CheckPath(itemFieldMap["Quantity"], item)
+			skus[sku].(*SalesReceiptLineAdd).Quantity = CheckPath(itemFieldMap["Quantity"], item)
 		}
 		if CheckPath(itemFieldMap["ClassRef.FullName"], item) != "" {
 			skus[sku].(*SalesReceiptLineAdd).ClassRef.FullName = CheckPath(itemFieldMap["ClassRef.FullName"], item)
