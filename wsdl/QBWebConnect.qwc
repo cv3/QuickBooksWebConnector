@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<QBWCXML>
+<AppName>CommerceV3</AppName>
+<AppID>2</AppID>
+<AppURL>http://localhost:8080/qbwc</AppURL>
+<AppDescription>Integration with CV3</AppDescription>
+<AppSupport>http://localhost:8080</AppSupport>
+<UserName>user</UserName>
+<OwnerID>{52F3B9B1-86F1-4fcc-B1EE-566DE1813D20}</OwnerID>
+<FileID>{21A44FB5-33D9-4815-AC85-BC87A7E7D1EB}</FileID>
+<QBType>QBFS</QBType>
+<Style>Document</Style>
+<Scheduler>
+<RunEveryNMinutes>62</RunEveryNMinutes>
+</Scheduler>
+</QBWCXML>

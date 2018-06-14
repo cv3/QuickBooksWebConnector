@@ -1,0 +1,70 @@
+        <order>
+            <orderID>1001</orderID>
+            <amazonOrderIDs></amazonOrderIDs>
+            <priceCategory>retail</priceCategory>
+            <totalPrice>18.95</totalPrice>
+            <totalShipping>5.00</totalShipping>
+            <totalTax>0.00</totalTax>
+            <dateOrdered>2015-07-24</dateOrdered>
+            <timeOrdered>15:08:28</timeOrdered>
+            <payMethod>creditcard</payMethod>
+            <comments>These are some comments or special instructions.</comments>
+            <sourceCode>Web</sourceCode>
+            <IP>12.34.56.789</IP>
+            <shipTos>
+                <shipTo>
+                    <name>Lester Tester</name>
+                    <firstName>Lester</firstName>
+                    <lastName>Tester</lastName>
+                    <shipEmail></shipEmail>
+                    <company>CV3</company>
+                    <title>Mr.</title>
+                    <address1>123 Elm St.</address1>
+                    <address2>Apt 1B</address2>
+                    <city>Savannah</city>
+                    <state>GA</state>
+                    <zip>31419</zip>
+                    <country>United States</country>
+                    <phone>9125551010</phone>
+                    <tax>0.00</tax>
+                    <shipping>5.00</shipping>
+                    <shipOn>2015-07-27</shipOn>
+                    <message>This is a gift order</message>
+                    <shipMethod>1</shipMethod>
+                    <shipMethodCode>def</shipMethodCode>
+                    <giftWrap>false</giftWrap>
+                    <shipToProducts>
+                        <shipToProduct>
+                            <SKU>0001</SKU>
+                            <quantity>1</quantity>
+                            <price>13.95</price>
+                            <excludeFromTotalDiscount>false</excludeFromTotalDiscount>
+                        </shipToProduct>
+                    </shipToProducts>
+                </shipTo>
+            </shipTos>
+            <billing>
+                <memberID>4</memberID>
+                <firstName>Lester</firstName>
+                <lastName>Tester</lastName>
+                <company>CV3</company>
+                <title>Mr.</title>
+                <address1>123 Elm St.</address1>
+                <address2>Apt 1B</address2>
+                <city>Savannah</city>
+                <state>GA</state>
+                <zip>31419</zip>
+                <country>United States</country>
+                <email>lester@tester.com</email>
+                <phone>9125551010</phone>
+                <optOut>false</optOut>
+                <catalogOptOut>true</catalogOptOut>
+                <CCInfo>
+                    <CCType>VI</CCType>
+                    <CCName>Lester Tester</CCName>
+                    <CCNum>4111111111111111</CCNum>
+                    <CCExpM>12</CCExpM>
+                    <CCExpY>2015</CCExpY>
+                </CCInfo>
+            </billing>
+        </order>
