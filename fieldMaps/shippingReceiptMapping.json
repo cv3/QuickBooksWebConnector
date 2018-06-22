@@ -1,8 +1,8 @@
 {
-    "ItemRef.FullName":"shipMethodCode",
+    "ItemRef.FullName":"*SHIPPING CHARGES-retail",
     "ItemRef.ListID":"",
 	"Desc":"shipMethodCode",
-	"Quantity":"",
+	"Quantity":"1",
 	"UnitOfMeasure":"",
 	"Rate":"",
 	"RatePercent":"",

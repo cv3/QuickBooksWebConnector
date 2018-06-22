@@ -167,8 +167,17 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			qbReceiptAdd.Memo = CheckPath(fieldMap["Memo"], o)
 			qbReceiptAdd.PaymentMethodRef.FullName = CheckPath(fieldMap["PaymentMethodRef.FullName"], o)
 			qbReceiptAdd.PaymentMethodRef.ListID = CheckPath(fieldMap["PaymentMethodRef.ListID"], o)
-			qbReceiptAdd.CustomerRef.FullName = CheckPath(fieldMap["CustomerRef.FullName"], shipTo) //Customer must exist in QB for a salesReceiptAdd
-			qbReceiptAdd.CustomerRef.ListID = CheckPath(fieldMap["CustomerRef.ListID"], shipTo)
+			//TODO
+			//
+			//TODO
+			//If the billing name is not paypal, use it as the customers name
+			if !strings.Contains(strings.ToLower(CheckPath("billing.firstName", o)), "paypal") {
+				qbReceiptAdd.CustomerRef.FullName = CheckPath("billing.firstName", o) + " " + CheckPath("billing.lastName", o)
+			} else { //billing name is paypal, use shipTo name?
+				//Do not add customer
+				//qbReceiptAdd.CustomerRef.FullName = CheckPath(fieldMap["CustomerRef.FullName"], shipTo) //Customer must exist in QB for a salesReceiptAdd
+				//qbReceiptAdd.CustomerRef.ListID = CheckPath(fieldMap["CustomerRef.ListID"], shipTo)
+			}
 			qbReceiptAdd.ShipDate = CheckPath(fieldMap["ShipDate"], shipTo)
 
 			//Start shipping address
@@ -247,8 +256,6 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 				Log.WithFields(logrus.Fields{"Error": err, "ShipToProductsMapper": shipTo.Path("shipToProducts")}).Error("Error getting shipToProductsMapper Children in MakeSalesReceipt")
 				ErrLog.WithFields(logrus.Fields{"Error": err, "ShipToProductsMapper": shipTo.Path("shipToProducts")}).Error("Error getting shipToProductsMapper Children in MakeSalesReceipt")
 			}
-			//mMap keeps track of skus, to prevent doubles.
-			var mMap = make(map[string]bool)
 			var shipToProductFieldMap = ReadFieldMapping("./fieldMaps/cv3ShipToProductReceiptMapping.json")
 			//iterate over shipToProducts, save their skus, and start building their line add objects
 			for _, prod := range shipToProductsChildren {
@@ -261,7 +268,7 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 					s = append(s, CheckPath("SKU", prod))
 					var temp = &SalesReceiptLineAdd{}
 					//these variables must be set from the shipToProducts
-					tempInterface := AddReceiptItem(temp, prod, skus, mMap, &WorkCTX{}, shipToProductFieldMap)
+					tempInterface := AddReceiptItem("sku", temp, prod, skus, &WorkCTX{}, shipToProductFieldMap)
 					temp = tempInterface.(*SalesReceiptLineAdd)
 					skus[CheckPath("SKU", prod)] = temp
 				}
@@ -287,50 +294,19 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 				ErrLog.WithFields(logrus.Fields{"Error": err, "CV3ProductsMapper": products.Path("CV3Data.products")}).Error("Error getting CV3ProductsMapper Children in MakeSalesReceipt")
 			}
 			var itemFieldMap = ReadFieldMapping("./fieldMaps/salesReceiptLineAddMapping.json")
-			//reinitialize mMap
-			mMap = make(map[string]bool)
-			//check for duplicates and append producst to the workCTX
+			//Build the line items for the order
 			for _, item := range prodChildren {
-				//only add products whos skus match those from the order //removes subproduct's parent product
-				var prod = &SalesReceiptLineAdd{}
-				//Check it this is an attribute product
-				attr, err := item.Path("Attributes").Children()
-				if err != nil {
-					Log.WithFields(logrus.Fields{"Error": err}).Error("Error making attribute children in SalesReceiptAdd")
-					ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error making attribute children in SalesReceiptAdd")
-				}
-				if len(attr) > 1 { //if its an attribute product
-					//Range over all attribute options and find the one that matches the SKU in the order
-					for _, at := range attr {
-						_, ok := skus[CheckPath("SKU", at)]
-						if ok {
-							prodInterface := AddReceiptItem(prod, item, skus, mMap, &WorkCTX{}, itemFieldMap)
-							if prodInterface != nil {
-								prod = prodInterface.(*SalesReceiptLineAdd)
-								prodInterface = AddReceiptItem(prod, at, skus, mMap, workCTX, itemFieldMap)
-								if prodInterface != nil {
-									prod = prodInterface.(*SalesReceiptLineAdd)
-									qbReceiptAdd.SalesReceiptLineAdd = append(qbReceiptAdd.SalesReceiptLineAdd, *prod)
-								}
-							}
-						}
-					}
-				} else { //not an attribute product
-					_, ok := skus[CheckPath("SKU", item)]
-					if ok {
-						prod := AddReceiptItem(prod, item, skus, mMap, workCTX, itemFieldMap).(*SalesReceiptLineAdd)
-						qbReceiptAdd.SalesReceiptLineAdd = append(qbReceiptAdd.SalesReceiptLineAdd, *prod)
-					}
-				} //end else of attribute check
+				qbReceiptAdd.BuildLineItems(item, itemFieldMap, skus, workCTX)
 			}
 			qbReceiptAdd.TxnDate = CheckPath(fieldMap["TxnDate"], o)
 			shipMap := ReadFieldMapping("./fieldMaps/shippingReceiptMapping.json")
 			//Add shipping
 			var p = SalesReceiptLineAdd{}
-			p.Quantity = "1"
+			//HardCode fields
+			p.ItemRef.FullName = shipMap["ItemRef.FullName"] //cfg.HardCodedFields["shipping"]["ItemRef.FullName"] //"*SHIPPING CHARGES-retail" //CheckPath(shipMap["ItemRef.FullName"], shipTo)
+			p.Quantity = shipMap["Quantity"]                 //cfg.HardCodedFields["shipping"]["Quantity"]                 //"1"
+			//mapped fields
 			p.Amount = CheckPath(shipMap["Amount"], shipTo)
-			p.ItemRef.FullName = CheckPath(shipMap["ItemRef.FullName"], shipTo)
-			//set shipping description with the ship code
 			p.Desc = CheckPath(shipMap["Desc"], shipTo)
 			p.ClassRef.FullName = CheckPath(shipMap["ClassRef.FullName"], shipTo)
 			p.ClassRef.ListID = CheckPath(shipMap["ClassRef.ListID"], shipTo)
@@ -356,7 +332,7 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			p.Other2 = CheckPath(shipMap["Other2"], shipTo)
 
 			p.ServiceDate = CheckPath(shipMap["ServiceDate"], shipTo)
-			qbReceiptAdd.SalesReceiptLineAdd = append(qbReceiptAdd.SalesReceiptLineAdd, p)
+			qbReceiptAdd.SalesReceiptLineAdds = append(qbReceiptAdd.SalesReceiptLineAdds, p)
 
 			//Create Tax Item if tax > 0
 			taxFloat, err := strconv.ParseFloat(CheckPath("tax", shipTo), 64)
@@ -365,12 +341,13 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 				ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error parsing tax in SalesReceiptAdd")
 			}
 			if taxFloat > 0 {
+				var taxMap = ReadFieldMapping("./fieldMaps/taxReceiptMapping.json")
 				var taxItem = SalesReceiptLineAdd{}
-				taxItem.ItemRef.FullName = "Tax"
-				taxItem.Desc = "Tax"
-				taxItem.Quantity = "1"
-				taxItem.Amount = CheckPath("tax", shipTo)
-				qbReceiptAdd.SalesReceiptLineAdd = append(qbReceiptAdd.SalesReceiptLineAdd, taxItem)
+				taxItem.ItemRef.FullName = taxMap["ItemRef.FullName"] //"Tax"
+				taxItem.Desc = taxMap["Desc"]                         //"Tax"
+				taxItem.Quantity = taxMap["Quantity"]                 //"1"
+				taxItem.Amount = CheckPath(taxMap["Amount"], shipTo)
+				qbReceiptAdd.SalesReceiptLineAdds = append(qbReceiptAdd.SalesReceiptLineAdds, taxItem)
 			}
 			var templateBuff = bytes.Buffer{}
 			var escapedQBXML = bytes.Buffer{}
@@ -385,6 +362,7 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			//add the QBXML to the work slice
 			workCTX.Work = escapedQBXML.String()
 			workCTX.Data = qbReceiptAdd
+			workCTX.Order = o
 			workChan <- *workCTX
 
 			shipToSuccessChan <- ShipToSuccessTracker{
@@ -492,8 +470,17 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 			qbOrderAdd.ShipMethodRef.FullName = CheckPath(fieldMap["ShipMethodRef.FullName"], shipTo)
 			qbOrderAdd.ShipMethodRef.ListID = CheckPath(fieldMap["ShipMethodRef.ListID"], shipTo)
 			qbOrderAdd.Memo = CheckPath(fieldMap["Memo"], o)
-			qbOrderAdd.CustomerRef.FullName = CheckPath(fieldMap["CustomerRef.FullName"], shipTo)
-			qbOrderAdd.CustomerRef.ListID = CheckPath(fieldMap["CustomerRef.ListID"], shipTo)
+			//TODO
+			//
+			//TODO
+			//If the billing name is not paypal, use it as the customers name
+			if !strings.Contains(strings.ToLower(CheckPath("billing.firstName", o)), "paypal") {
+				qbOrderAdd.CustomerRef.FullName = CheckPath("billing.firstName", o) + " " + CheckPath("billing.lastName", o)
+			} else { //billing name is paypal, use shipTo name?
+				//Do not set customer
+				//qbOrderAdd.CustomerRef.FullName = CheckPath(fieldMap["CustomerRef.FullName"], shipTo)
+				//qbOrderAdd.CustomerRef.ListID = CheckPath(fieldMap["CustomerRef.ListID"], shipTo)
+			}
 			qbOrderAdd.ShipDate = CheckPath(fieldMap["ShipDate"], shipTo)
 
 			//Start shipping address//TODO see if QB can handle multiple shipping addresses in the xml
@@ -538,7 +525,6 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 
 			var s = make([]string, 0) //will hold product skus
 			var sMap = make(map[string]bool, 0)
-			var mMap = make(map[string]bool)
 			var skus = make(map[string]interface{}, 0) //will hold a salesLineAdd or salesGroupLineAdd
 			//Prepare shipToProducts Gabs container for range loop
 			shipToProductsChildren, err := shipTo.Path("shipToProducts").Children()
@@ -557,7 +543,7 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 					s = append(s, CheckPath("SKU", prod))
 					var temp = &SalesOrderLineAdd{} //SalesReceiptPart{}
 					//these variables must be set from the shipToProducts
-					tempInterface := AddOrderItem(temp, prod, skus, mMap, &WorkCTX{}, shipToProductFieldMap)
+					tempInterface := AddOrderItem("sku", temp, prod, skus, &WorkCTX{}, shipToProductFieldMap)
 					temp = tempInterface.(*SalesOrderLineAdd)
 					skus[CheckPath("SKU", prod)] = temp
 				}
@@ -582,49 +568,20 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 				Log.WithFields(logrus.Fields{"Error": err, "CV3ProductsMapper": products.Path("CV3Data.products")}).Error("Error getting CV3ProductsMapper Children in MakeSalesOrder")
 				ErrLog.WithFields(logrus.Fields{"Error": err, "CV3ProductsMapper": products.Path("CV3Data.products")}).Error("Error getting CV3ProductsMapper Children in MakeSalesOrder")
 			}
-			//reinitialize mMap
-			mMap = make(map[string]bool)
 			var itemFieldMap = ReadFieldMapping("./fieldMaps/salesOrderLineAddMapping.json")
-			//check for duplicates and append producst to the workCTX
+			//Build the line items for this order
 			for _, item := range prodChildren {
-				var prod = &SalesOrderLineAdd{}
-				//Check if this is an attribute product
-				attr, err := item.Path("Attributes").Children()
-				if err != nil {
-					Log.WithFields(logrus.Fields{"Error": err}).Error("Error making attribute children in SalesOrderAdd")
-					ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error making attribute children in SalesOrderAdd")
-				}
-				if len(attr) > 1 { //if its an attribute product
-					//Range over all attribute options and find the one that matches the SKU in the order
-					for _, at := range attr {
-						_, ok := skus[CheckPath("SKU", at)]
-						if ok {
-							prodInterface := AddOrderItem(prod, item, skus, mMap, &WorkCTX{}, itemFieldMap)
-							if prodInterface != nil {
-								prod = prodInterface.(*SalesOrderLineAdd)
-								prodInterface = AddOrderItem(prod, at, skus, mMap, workCTX, itemFieldMap)
-								if prodInterface != nil {
-									prod = prodInterface.(*SalesOrderLineAdd)
-									qbOrderAdd.SalesOrderLineAdds = append(qbOrderAdd.SalesOrderLineAdds, *prod)
-								}
-							}
-						}
-					}
-				} else { //not an attribute product
-					_, ok := skus[CheckPath("SKU", item)]
-					if ok {
-						prod = AddOrderItem(prod, item, skus, mMap, workCTX, itemFieldMap).(*SalesOrderLineAdd)
-						qbOrderAdd.SalesOrderLineAdds = append(qbOrderAdd.SalesOrderLineAdds, *prod)
-					}
-				} //end else of attribute check
+				qbOrderAdd.BuildLineItems(item, itemFieldMap, skus, workCTX)
 			}
 			qbOrderAdd.TxnDate = CheckPath(fieldMap["TxnDate"], o)
 			shipMap := ReadFieldMapping("./fieldMaps/shippingOrderMapping.json")
 			//Add shipping
 			var p = SalesOrderLineAdd{}
-			p.Quantity = "1"
+			//Set hard coded values
+			p.ItemRef.FullName = shipMap["ItemRef.FullName"] //"Shipping" //CheckPath(shipMap["ItemRef.FullName"], shipTo)
+			p.Quantity = shipMap["Quantity"]                 //"1"
+			//Set mapped fields
 			p.Amount = CheckPath(shipMap["Amount"], shipTo)
-			p.ItemRef.FullName = "Shipping" //CheckPath(shipMap["ItemRef.FullName"], shipTo)
 			//set shipping description with the ship code
 			p.Desc = CheckPath(shipMap["Desc"], shipTo)
 			p.ClassRef.FullName = CheckPath(shipMap["ClassRef.FullName"], shipTo)
@@ -671,6 +628,7 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 			//add the QBXML to the work slice
 			workCTX.Work = escapedQBXML.String()
 			workCTX.Data = qbOrderAdd
+			workCTX.Order = o
 			workChan <- *workCTX
 
 			shipToSuccessChan <- ShipToSuccessTracker{
@@ -781,198 +739,181 @@ func CheckPath(path string, o *gabs.Container) string {
 	return ""
 }
 
-//AddOrderItem will add the cv3 product data to the return object
-func AddOrderItem(prod interface{}, item *gabs.Container, skus map[string]interface{}, mMap map[string]bool, workCTX *WorkCTX, itemFieldMap map[string]string) interface{} {
-	//only add products whos skus match those from the order //removes subproduct's parent product
-
-	var sku = CheckPath("SKU", item)
-	if mMap[sku] == true { //duplicate sku found, do nothing
-		Log.WithFields(logrus.Fields{"sku": CheckPath("SKU", item)}).Debug("duplicate found, do nothing")
-	} else { //not duplicate sku
-		mMap[sku] = true
-		//unmarshal into cv3 product, to add to workCTX list of products
-		var m = cv3go.Product{}
-		err := json.Unmarshal(item.Bytes(), &m)
-		if err != nil {
-			Log.WithFields(logrus.Fields{"Error": err, "product json": item.String()}).Error("Error Unmarshalling cv3 products in MakeSalesOrder")
-			ErrLog.WithFields(logrus.Fields{"Error": err, "product json": item.String()}).Error("Error Unmarshalling cv3 products in MakeSalesOrder")
-		}
-		workCTX.CV3Products = append(workCTX.CV3Products, m)
-		if skus[sku] == nil {
-			skus[sku] = prod
-		}
-		if CheckPath(itemFieldMap["ItemRef.FullName"], item) != "" {
-			if len(CheckPath(itemFieldMap["ItemRef.FullName"], item)) > 31 {
-				skus[sku].(*SalesOrderLineAdd).ItemRef.FullName = html.EscapeString(CheckPath(itemFieldMap["ItemRef.FullName"], item)[:31])
-			} else {
-				skus[sku].(*SalesOrderLineAdd).ItemRef.FullName = html.EscapeString(CheckPath(itemFieldMap["ItemRef.FullName"], item))
-			}
-		}
-		if CheckPath(itemFieldMap["Quantity"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).Quantity = CheckPath(itemFieldMap["Quantity"], item)
-		}
-		if CheckPath(itemFieldMap["ItemRef.ListID"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).ItemRef.ListID = CheckPath(itemFieldMap["ItemRef.ListID"], item)
-		}
-		if CheckPath(itemFieldMap["ClassRef.FullName"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).ClassRef.FullName = CheckPath(itemFieldMap["ClassRef.FullName"], item)
-		}
-		if CheckPath(itemFieldMap["ClassRef.ListID"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).ClassRef.ListID = CheckPath(itemFieldMap["ClassRef.ListID"], item)
-		}
-		if CheckPath(itemFieldMap["Desc"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).Desc = html.EscapeString(CheckPath(itemFieldMap["Desc"], item))
-		}
-		if CheckPath(itemFieldMap["Other1"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).Other1 = CheckPath(itemFieldMap["Other1"], item)
-		}
-		if CheckPath(itemFieldMap["Other2"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).Other2 = CheckPath(itemFieldMap["Other2"], item)
-		}
-		if CheckPath(itemFieldMap["UnitOfMeasure"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).UnitOfMeasure = CheckPath(itemFieldMap["UnitOfMeasure"], item)
-		}
-		if CheckPath(itemFieldMap["Rate"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).Rate = CheckPath(itemFieldMap["Rate"], item)
-		}
-		if CheckPath(itemFieldMap["RatePercent"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).RatePercent = CheckPath(itemFieldMap["RatePercent"], item)
-		}
-		if CheckPath(itemFieldMap["PriceLevelRef.FullName"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).PriceLevelRef.FullName = CheckPath(itemFieldMap["PriceLevelRef.FullName"], item)
-		}
-		if CheckPath(itemFieldMap["PriceLevelRef.ListID"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).PriceLevelRef.ListID = CheckPath(itemFieldMap["PriceLevelRef.ListID"], item)
-		}
-		if CheckPath(itemFieldMap["OptionForPriceRuleConflict"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).OptionForPriceRuleConflict = CheckPath(itemFieldMap["OptionForPriceRuleConflict"], item)
-		}
-		if CheckPath(itemFieldMap["InventorySiteRef.FullName"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).InventorySiteRef.FullName = CheckPath(itemFieldMap["InventorySiteRef.FullName"], item)
-		}
-		if CheckPath(itemFieldMap["InventorySiteRef.ListID"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).InventorySiteRef.ListID = CheckPath(itemFieldMap["InventorySiteRef.ListID"], item)
-		}
-		if CheckPath(itemFieldMap["InventorySiteLocationRef.FullName"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).InventorySiteLocationRef.FullName = CheckPath(itemFieldMap["InventorySiteLocationRef.FullName"], item)
-		}
-		if CheckPath(itemFieldMap["InventorySiteLocationRef.ListID"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).InventorySiteLocationRef.ListID = CheckPath(itemFieldMap["InventorySiteLocationRef.ListID"], item)
-		}
-		if CheckPath(itemFieldMap["SerialNumber"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).SerialNumber = CheckPath(itemFieldMap["SerialNumber"], item)
-		}
-		if CheckPath(itemFieldMap["LotNumber"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).LotNumber = CheckPath(itemFieldMap["LotNumber"], item)
-		}
-		if CheckPath(itemFieldMap["SalesTaxCodeRef.FullName"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).SalesTaxCodeRef.FullName = CheckPath(itemFieldMap["SalesTaxCodeRef.FullName"], item)
-		}
-		if CheckPath(itemFieldMap["SalesTaxCodeRef.ListID"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).SalesTaxCodeRef.ListID = CheckPath(itemFieldMap["SalesTaxCodeRef.ListID"], item)
-		}
-		if CheckPath(itemFieldMap["IsManuallyClosed"], item) != "" {
-			skus[sku].(*SalesOrderLineAdd).IsManuallyClosed = CheckPath(itemFieldMap["IsManuallyClosed"], item)
-		}
-		return skus[sku].(*SalesOrderLineAdd)
+//AddOrderItem will add the cv3 product data to the quickbooks return object
+func AddOrderItem(sku string, prod interface{}, item *gabs.Container, skus map[string]interface{}, workCTX *WorkCTX, itemFieldMap map[string]string) interface{} {
+	//unmarshal into cv3 product, to add to workCTX list of products
+	var m = cv3go.Product{}
+	err := json.Unmarshal(item.Bytes(), &m)
+	if err != nil {
+		Log.WithFields(logrus.Fields{"Error": err, "product json": item.String()}).Error("Error Unmarshalling cv3 products in MakeSalesOrder")
+		ErrLog.WithFields(logrus.Fields{"Error": err, "product json": item.String()}).Error("Error Unmarshalling cv3 products in MakeSalesOrder")
 	}
-	return nil
+	workCTX.CV3Products = append(workCTX.CV3Products, m)
+	if skus[sku] == nil {
+		skus[sku] = prod
+	}
+	if CheckPath(itemFieldMap["ItemRef.FullName"], item) != "" {
+		if len(CheckPath(itemFieldMap["ItemRef.FullName"], item)) > 31 {
+			skus[sku].(*SalesOrderLineAdd).ItemRef.FullName = html.EscapeString(CheckPath(itemFieldMap["ItemRef.FullName"], item)[:31])
+		} else {
+			skus[sku].(*SalesOrderLineAdd).ItemRef.FullName = html.EscapeString(CheckPath(itemFieldMap["ItemRef.FullName"], item))
+		}
+	}
+	if CheckPath(itemFieldMap["Quantity"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).Quantity = CheckPath(itemFieldMap["Quantity"], item)
+	}
+	if CheckPath(itemFieldMap["ItemRef.ListID"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).ItemRef.ListID = CheckPath(itemFieldMap["ItemRef.ListID"], item)
+	}
+	if CheckPath(itemFieldMap["ClassRef.FullName"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).ClassRef.FullName = CheckPath(itemFieldMap["ClassRef.FullName"], item)
+	}
+	if CheckPath(itemFieldMap["ClassRef.ListID"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).ClassRef.ListID = CheckPath(itemFieldMap["ClassRef.ListID"], item)
+	}
+	if CheckPath(itemFieldMap["Desc"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).Desc = html.EscapeString(CheckPath(itemFieldMap["Desc"], item))
+	}
+	if CheckPath(itemFieldMap["Other1"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).Other1 = CheckPath(itemFieldMap["Other1"], item)
+	}
+	if CheckPath(itemFieldMap["Other2"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).Other2 = CheckPath(itemFieldMap["Other2"], item)
+	}
+	if CheckPath(itemFieldMap["UnitOfMeasure"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).UnitOfMeasure = CheckPath(itemFieldMap["UnitOfMeasure"], item)
+	}
+	if CheckPath(itemFieldMap["Rate"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).Rate = CheckPath(itemFieldMap["Rate"], item)
+	}
+	if CheckPath(itemFieldMap["RatePercent"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).RatePercent = CheckPath(itemFieldMap["RatePercent"], item)
+	}
+	if CheckPath(itemFieldMap["PriceLevelRef.FullName"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).PriceLevelRef.FullName = CheckPath(itemFieldMap["PriceLevelRef.FullName"], item)
+	}
+	if CheckPath(itemFieldMap["PriceLevelRef.ListID"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).PriceLevelRef.ListID = CheckPath(itemFieldMap["PriceLevelRef.ListID"], item)
+	}
+	if CheckPath(itemFieldMap["OptionForPriceRuleConflict"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).OptionForPriceRuleConflict = CheckPath(itemFieldMap["OptionForPriceRuleConflict"], item)
+	}
+	if CheckPath(itemFieldMap["InventorySiteRef.FullName"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).InventorySiteRef.FullName = CheckPath(itemFieldMap["InventorySiteRef.FullName"], item)
+	}
+	if CheckPath(itemFieldMap["InventorySiteRef.ListID"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).InventorySiteRef.ListID = CheckPath(itemFieldMap["InventorySiteRef.ListID"], item)
+	}
+	if CheckPath(itemFieldMap["InventorySiteLocationRef.FullName"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).InventorySiteLocationRef.FullName = CheckPath(itemFieldMap["InventorySiteLocationRef.FullName"], item)
+	}
+	if CheckPath(itemFieldMap["InventorySiteLocationRef.ListID"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).InventorySiteLocationRef.ListID = CheckPath(itemFieldMap["InventorySiteLocationRef.ListID"], item)
+	}
+	if CheckPath(itemFieldMap["SerialNumber"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).SerialNumber = CheckPath(itemFieldMap["SerialNumber"], item)
+	}
+	if CheckPath(itemFieldMap["LotNumber"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).LotNumber = CheckPath(itemFieldMap["LotNumber"], item)
+	}
+	if CheckPath(itemFieldMap["SalesTaxCodeRef.FullName"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).SalesTaxCodeRef.FullName = CheckPath(itemFieldMap["SalesTaxCodeRef.FullName"], item)
+	}
+	if CheckPath(itemFieldMap["SalesTaxCodeRef.ListID"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).SalesTaxCodeRef.ListID = CheckPath(itemFieldMap["SalesTaxCodeRef.ListID"], item)
+	}
+	if CheckPath(itemFieldMap["IsManuallyClosed"], item) != "" {
+		skus[sku].(*SalesOrderLineAdd).IsManuallyClosed = CheckPath(itemFieldMap["IsManuallyClosed"], item)
+	}
+	return skus[sku].(*SalesOrderLineAdd)
 }
 
-//AddReceiptItem asdf
-func AddReceiptItem(prod interface{}, item *gabs.Container, skus map[string]interface{}, mMap map[string]bool, workCTX *WorkCTX, itemFieldMap map[string]string) interface{} {
-	var sku = CheckPath("SKU", item)
-	if mMap[sku] == true { //duplicate sku found, do nothing
-		Log.WithFields(logrus.Fields{"sku": CheckPath("SKU", item)}).Debug("duplicate found, do nothing")
-	} else { //not duplicate sku
-		mMap[sku] = true
-		//unmarshal into cv3 product, to add to workCTX list of products
-		var m = cv3go.Product{}
-		err := json.Unmarshal(item.Bytes(), &m)
-		if err != nil {
-			Log.WithFields(logrus.Fields{"Error": err, "product json": item.String()}).Error("Error Unmarshalling cv3 products in MakeSalesReceipt")
-			ErrLog.WithFields(logrus.Fields{"Error": err, "product json": item.String()}).Error("Error Unmarshalling cv3 products in MakeSalesReceipt")
-		}
-		workCTX.CV3Products = append(workCTX.CV3Products, m)
-		if skus[sku] == nil {
-			skus[sku] = prod
-		}
-		if CheckPath(itemFieldMap["ItemRef.FullName"], item) != "" {
-			if len(CheckPath(itemFieldMap["ItemRef.FullName"], item)) > 31 {
-				skus[sku].(*SalesReceiptLineAdd).ItemRef.FullName = html.EscapeString(CheckPath(itemFieldMap["ItemRef.FullName"], item)[:31])
-			} else {
-				skus[sku].(*SalesReceiptLineAdd).ItemRef.FullName = html.EscapeString(CheckPath(itemFieldMap["ItemRef.FullName"], item))
-			}
-		}
-		if CheckPath(itemFieldMap["Quantity"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).Quantity = CheckPath(itemFieldMap["Quantity"], item)
-		}
-		if CheckPath(itemFieldMap["ClassRef.FullName"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).ClassRef.FullName = CheckPath(itemFieldMap["ClassRef.FullName"], item)
-		}
-		if CheckPath(itemFieldMap["Desc"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).Desc = html.EscapeString(CheckPath(itemFieldMap["Desc"], item))
-		}
-		if CheckPath(itemFieldMap["Other1"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).Other1 = CheckPath(itemFieldMap["Other1"], item)
-		}
-		if CheckPath(itemFieldMap["Other2"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).Other2 = CheckPath(itemFieldMap["Other2"], item)
-		}
-		if CheckPath(itemFieldMap["UnitOfMeasure"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).UnitOfMeasure = CheckPath(itemFieldMap["UnitOfMeasure"], item)
-		}
-		if CheckPath(itemFieldMap["Rate"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).Rate = CheckPath(itemFieldMap["Rate"], item)
-		}
-		if CheckPath(itemFieldMap["RatePercent"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).RatePercent = CheckPath(itemFieldMap["RatePercent"], item)
-		}
-		if CheckPath(itemFieldMap["PriceLevelRef.FullName"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).PriceLevelRef.FullName = CheckPath(itemFieldMap["PriceLevelRef.FullName"], item)
-		}
-		if CheckPath(itemFieldMap["PriceLevelRef.ListID"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).PriceLevelRef.ListID = CheckPath(itemFieldMap["PriceLevelRef.ListID"], item)
-		}
-		if CheckPath(itemFieldMap["OptionForPriceRuleConflict"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).OptionForPriceRuleConflict = CheckPath(itemFieldMap["OptionForPriceRuleConflict"], item)
-		}
-		if CheckPath(itemFieldMap["InventorySiteRef.FullName"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).InventorySiteLocationRef.FullName = CheckPath(itemFieldMap["InventorySiteRef.FullName"], item)
-		}
-		if CheckPath(itemFieldMap["InventorySiteRef.ListID"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).InventorySiteRef.ListID = CheckPath(itemFieldMap["InventorySiteRef.ListID"], item)
-		}
-		if CheckPath(itemFieldMap["InventorySiteLocationRef.FullName"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).InventorySiteLocationRef.FullName = CheckPath(itemFieldMap["InventorySiteLocationRef.FullName"], item)
-		}
-		if CheckPath(itemFieldMap["InventorySiteLocationRef.ListID"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).InventorySiteLocationRef.ListID = CheckPath(itemFieldMap["InventorySiteLocationRef.ListID"], item)
-		}
-		if CheckPath(itemFieldMap["SerialNumber"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).SerialNumber = CheckPath(itemFieldMap["SerialNumber"], item)
-		}
-		if CheckPath(itemFieldMap["LotNumber"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).LotNumber = CheckPath(itemFieldMap["LotNumber"], item)
-		}
-		if CheckPath(itemFieldMap["ServiceDate"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).ServiceDate = CheckPath(itemFieldMap["ServiceDate"], item)
-		}
-		if CheckPath(itemFieldMap["SalesTaxCodeRef.FullName"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).SalesTaxCodeRef.FullName = CheckPath(itemFieldMap["SalesTaxCodeRef.FullName"], item)
-		}
-		if CheckPath(itemFieldMap["SalesTaxCodeRef.ListID"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).SalesTaxCodeRef.ListID = CheckPath(itemFieldMap["SalesTaxCodeRef.ListID"], item)
-		}
-		if CheckPath(itemFieldMap["OverrideItemAccountRef.FullName"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).OverrideItemAccountRef.FullName = CheckPath(itemFieldMap["OverrideItemAccountRef.FullName"], item)
-		}
-		if CheckPath(itemFieldMap["OverrideItemAccountRef.ListID"], item) != "" {
-			skus[sku].(*SalesReceiptLineAdd).OverrideItemAccountRef.ListID = CheckPath(itemFieldMap["OverrideItemAccountRef.ListID"], item)
-		}
-		//return salesReceiptLine item
-		return skus[sku].(*SalesReceiptLineAdd)
-		//qbReceiptAdd.SalesReceiptLineAdd = append(qbReceiptAdd.SalesReceiptLineAdd, *skus[sku].(*SalesReceiptLineAdd))
+//AddReceiptItem will add the cv3 product data to the quickbooks return object
+func AddReceiptItem(sku string, prod interface{}, item *gabs.Container, skus map[string]interface{}, workCTX *WorkCTX, itemFieldMap map[string]string) interface{} {
+	//unmarshal into cv3 product, to add to workCTX list of products
+	var m = cv3go.Product{}
+	err := json.Unmarshal(item.Bytes(), &m)
+	if err != nil {
+		Log.WithFields(logrus.Fields{"Error": err, "product json": item.String()}).Error("Error Unmarshalling cv3 products in MakeSalesReceipt")
+		ErrLog.WithFields(logrus.Fields{"Error": err, "product json": item.String()}).Error("Error Unmarshalling cv3 products in MakeSalesReceipt")
 	}
-	return nil
+	workCTX.CV3Products = append(workCTX.CV3Products, m)
+	if skus[sku] == nil {
+		skus[sku] = prod
+	}
+	if CheckPath(itemFieldMap["ItemRef.FullName"], item) != "" {
+		if len(CheckPath(itemFieldMap["ItemRef.FullName"], item)) > 31 {
+			skus[sku].(*SalesReceiptLineAdd).ItemRef.FullName = html.EscapeString(CheckPath(itemFieldMap["ItemRef.FullName"], item)[:31])
+		} else {
+			skus[sku].(*SalesReceiptLineAdd).ItemRef.FullName = html.EscapeString(CheckPath(itemFieldMap["ItemRef.FullName"], item))
+		}
+	}
+	if CheckPath(itemFieldMap["Quantity"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).Quantity = CheckPath(itemFieldMap["Quantity"], item)
+	}
+	if CheckPath(itemFieldMap["ClassRef.FullName"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).ClassRef.FullName = CheckPath(itemFieldMap["ClassRef.FullName"], item)
+	}
+	if CheckPath(itemFieldMap["Desc"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).Desc = html.EscapeString(CheckPath(itemFieldMap["Desc"], item))
+	}
+	if CheckPath(itemFieldMap["Other1"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).Other1 = CheckPath(itemFieldMap["Other1"], item)
+	}
+	if CheckPath(itemFieldMap["Other2"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).Other2 = CheckPath(itemFieldMap["Other2"], item)
+	}
+	if CheckPath(itemFieldMap["UnitOfMeasure"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).UnitOfMeasure = CheckPath(itemFieldMap["UnitOfMeasure"], item)
+	}
+	if CheckPath(itemFieldMap["Rate"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).Rate = CheckPath(itemFieldMap["Rate"], item)
+	}
+	if CheckPath(itemFieldMap["RatePercent"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).RatePercent = CheckPath(itemFieldMap["RatePercent"], item)
+	}
+	if CheckPath(itemFieldMap["PriceLevelRef.FullName"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).PriceLevelRef.FullName = CheckPath(itemFieldMap["PriceLevelRef.FullName"], item)
+	}
+	if CheckPath(itemFieldMap["PriceLevelRef.ListID"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).PriceLevelRef.ListID = CheckPath(itemFieldMap["PriceLevelRef.ListID"], item)
+	}
+	if CheckPath(itemFieldMap["OptionForPriceRuleConflict"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).OptionForPriceRuleConflict = CheckPath(itemFieldMap["OptionForPriceRuleConflict"], item)
+	}
+	if CheckPath(itemFieldMap["InventorySiteRef.FullName"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).InventorySiteLocationRef.FullName = CheckPath(itemFieldMap["InventorySiteRef.FullName"], item)
+	}
+	if CheckPath(itemFieldMap["InventorySiteRef.ListID"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).InventorySiteRef.ListID = CheckPath(itemFieldMap["InventorySiteRef.ListID"], item)
+	}
+	if CheckPath(itemFieldMap["InventorySiteLocationRef.FullName"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).InventorySiteLocationRef.FullName = CheckPath(itemFieldMap["InventorySiteLocationRef.FullName"], item)
+	}
+	if CheckPath(itemFieldMap["InventorySiteLocationRef.ListID"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).InventorySiteLocationRef.ListID = CheckPath(itemFieldMap["InventorySiteLocationRef.ListID"], item)
+	}
+	if CheckPath(itemFieldMap["SerialNumber"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).SerialNumber = CheckPath(itemFieldMap["SerialNumber"], item)
+	}
+	if CheckPath(itemFieldMap["LotNumber"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).LotNumber = CheckPath(itemFieldMap["LotNumber"], item)
+	}
+	if CheckPath(itemFieldMap["ServiceDate"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).ServiceDate = CheckPath(itemFieldMap["ServiceDate"], item)
+	}
+	if CheckPath(itemFieldMap["SalesTaxCodeRef.FullName"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).SalesTaxCodeRef.FullName = CheckPath(itemFieldMap["SalesTaxCodeRef.FullName"], item)
+	}
+	if CheckPath(itemFieldMap["SalesTaxCodeRef.ListID"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).SalesTaxCodeRef.ListID = CheckPath(itemFieldMap["SalesTaxCodeRef.ListID"], item)
+	}
+	if CheckPath(itemFieldMap["OverrideItemAccountRef.FullName"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).OverrideItemAccountRef.FullName = CheckPath(itemFieldMap["OverrideItemAccountRef.FullName"], item)
+	}
+	if CheckPath(itemFieldMap["OverrideItemAccountRef.ListID"], item) != "" {
+		skus[sku].(*SalesReceiptLineAdd).OverrideItemAccountRef.ListID = CheckPath(itemFieldMap["OverrideItemAccountRef.ListID"], item)
+	}
+	//return salesReceiptLine item
+	return skus[sku].(*SalesReceiptLineAdd)
 }

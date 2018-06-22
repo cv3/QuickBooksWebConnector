@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -206,7 +207,7 @@ func SendSendRequestXMLResponse(parentNode Node, w http.ResponseWriter) {
 		//check the workInsert channel first
 		case work, ok := <-workInsertChan:
 			if ok {
-				//Need to track the work being done
+				//Need to track the work being
 				checkWorckInsertChan <- work
 				//add work to the Queue
 				globalSession.QBXMLWorkQueue = append(globalSession.QBXMLWorkQueue, work.Work)
@@ -422,16 +423,19 @@ func SendAuthenticateResponse(parentNode Node, w http.ResponseWriter) {
 func LoadTemplate(tPath *string, ctx interface{}, requestBody *bytes.Buffer) {
 	t, err := template.ParseFiles(*tPath)
 	if err != nil {
+		fmt.Println(err)
 		Log.WithFields(logrus.Fields{"error": err, "filepath": *tPath}).Error("Error parsing template file")
 		ErrLog.WithFields(logrus.Fields{"error": err, "filepath": *tPath}).Error("Error parsing template file")
 		getLastErrChan <- err.Error()
 	} // Populate requestBody with the executed template and context
+
 	err = t.Execute(requestBody, ctx)
 	if err != nil {
 		Log.WithFields(logrus.Fields{"error": err, "filepath": *tPath}).Error("Error executing template")
 		ErrLog.WithFields(logrus.Fields{"error": err, "filepath": *tPath}).Error("Error executing template")
 		getLastErrChan <- err.Error()
 	}
+	//fmt.Println(requestBody.String())
 }
 
 //InitWork will go get work to be done
@@ -709,6 +713,11 @@ func SalesOrderAddRsHandler(parentNode Node, checkWork WorkCTX) {
 				"message":         salesOrderAddRs.StatusMessage,
 				"Status Code":     salesOrderAddRs.StatusCode,
 			}).Error("SalesOrderAddRs error 3140, items not in Quick Books")
+			switch salesOrderAddRs.StatusMessage[44:52] {
+			case "Customer":
+				Log.Debug("Customer not found, attempting to add new customer to Quickbooks")
+				go CustomerAddQB(checkWork)
+			}
 			go func() {
 				confirmShipToChan <- ShipToSuccessTracker{
 					Index:          checkWork.Data.(SalesOrderAdd).ShipToIndex,
@@ -792,17 +801,22 @@ func SalesReceiptAddRsHandler(parentNode Node, checkWork WorkCTX) {
 				}
 			}()
 			break
-		case "3140": //item not in QB
+		case "3140": //Account Ref not in QB
 			Log.WithFields(logrus.Fields{
 				"Status Severity": salesReceiptAddRs.StatusSeverity,
 				"message":         salesReceiptAddRs.StatusMessage,
 				"Status Code":     salesReceiptAddRs.StatusCode,
-			}).Error("SalesReceiptAddRs error 3140, items not in Quick Books")
+			}).Error("SalesReceiptAddRs error 3140, Account Ref not in Quick Books")
 			ErrLog.WithFields(logrus.Fields{
 				"Status Severity": salesReceiptAddRs.StatusSeverity,
 				"message":         salesReceiptAddRs.StatusMessage,
 				"Status Code":     salesReceiptAddRs.StatusCode,
-			}).Error("SalesReceiptAddRs error 3140, items not in Quick Books")
+			}).Error("SalesReceiptAddRs error 3140, Account Ref not in Quick Books")
+			switch salesReceiptAddRs.StatusMessage[44:52] {
+			case "Customer":
+				Log.Debug("Customer not found, attempting to add new customer to Quickbooks")
+				go CustomerAddQB(checkWork)
+			}
 			go func() {
 				confirmShipToChan <- ShipToSuccessTracker{
 					Index:          checkWork.Data.(SalesReceiptAdd).ShipToIndex,
@@ -965,4 +979,20 @@ func AutoImportItemsToQB(checkWork WorkCTX) {
 		workInsertChan <- checkWork
 	}
 	Log.Debug("automatic import of cv3 items is currently disabled")
+}
+
+// StrExtract Retrieves a string between two delimiters.
+// sExper:  Specifies the expression to search.
+// cAdelim: Specifies the character that delimits the beginning of sExper.
+// cCdelim: Specifies the character that delimits the end of sExper.
+// nOccur:  Specifies at which occurrence of cAdelim in sExper to start the extraction.
+func StrExtract(sExper, sAdelim, sCdelim string, nOccur int) string {
+	aExper := strings.Split(sExper, sAdelim)
+	if len(aExper) <= nOccur {
+		return ""
+	}
+	sMember := aExper[nOccur]
+	aExper = strings.Split(sMember, sCdelim)
+
+	return aExper[0]
 }

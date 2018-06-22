@@ -84,6 +84,10 @@ Before continuing, QuickBooks 2015 or later must be installed, but not running.
     1. Enter your password as it was entered in qbwcServer/wsdl/**QBWebConnect.qwc**.  When asked to save the password click **Yes**
     2. Check the box on the left if it is unchecked.
     3. Click "Update selected" to manually run the application.
+    
+4. Create a shortcut on the desktop to start the QBWebConnector
+    1. Explore to C:\Program Files (x86)\Common Files\Intuit\QuickBooks\QBWebConnector\
+    2. Right click on QBWebConnector.exe and select Send to > Desktop (Create shortcut)
 
 ---
 
