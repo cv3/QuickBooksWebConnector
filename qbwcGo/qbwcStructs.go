@@ -3,6 +3,8 @@ package qbwcGo
 import (
 	"encoding/xml"
 
+	"github.com/Sirupsen/logrus"
+	"github.com/TeamFairmont/gabs"
 	"github.com/amazingfly/cv3go"
 )
 
@@ -10,6 +12,7 @@ import (
 type WorkCTX struct {
 	Work        string          //holds the excaped qbxml
 	Data        interface{}     //holds the struct that created the qbxml
+	Order       *gabs.Container //holds the origional order information
 	CV3Products []cv3go.Product //holds the cv3 products used to make the qbxml
 	Type        string          //type of qbxml request
 }
@@ -479,6 +482,75 @@ type SalesReceiptLineGroupAdd struct {
 	DataExt                  []DataExt  `xml:"DataExt"`
 }
 
+// BuildLineItems will take a *gabs.Container of CV3 items, itemFieldMap, skus a map of items to check, and mMap a map for keeping track of the used skus
+func (receipt *SalesReceiptAdd) BuildLineItems(item *gabs.Container, itemFieldMap map[string]string, skus map[string]interface{}, workCTX *WorkCTX) { //*SalesReceiptAdd {
+	var prod *SalesReceiptLineAdd
+	var sku string
+	//Check if this is an attribute product
+	attr, err := item.Path("Attributes").Children()
+	if err != nil {
+		Log.WithFields(logrus.Fields{"Error": err}).Error("Error making attribute children in SalesReceiptAdd")
+		ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error making attribute children in SalesReceiptAdd")
+	}
+	//Check if this is asubproduct
+	subProds, err := item.Path("SubProducts").Children()
+	if err != nil {
+		Log.WithFields(logrus.Fields{"Error": err}).Error("Error making SubProducts children in SalesReceiptAdd")
+		ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error making SubProducts children in SalesReceiptAdd")
+	}
+	if len(attr) > 1 { //if its an attribute product
+		//Range over all attribute options and find the one that matches the SKU in the receipt
+		for _, at := range attr {
+			sku = CheckPath("SKU", at)
+			_, ok := skus[sku]
+			if ok { //if the sku exists in the order data
+				//Get the product data from the top level of the cv3 return
+				prodInterface := AddReceiptItem(sku, prod, item, skus, &WorkCTX{}, itemFieldMap)
+				if prodInterface != nil {
+					prod = prodInterface.(*SalesReceiptLineAdd)
+					//Get the product data from the specific attribute product
+					prodInterface = AddReceiptItem(sku, prod, at, skus, workCTX, itemFieldMap)
+					if prodInterface != nil {
+						prod = prodInterface.(*SalesReceiptLineAdd)
+						//Add the product data to the quickbooks response data.
+						receipt.SalesReceiptLineAdds = append(receipt.SalesReceiptLineAdds, *prod)
+					}
+				}
+			}
+		}
+	} else if len(subProds) > 1 {
+		//Range over all attribute options and find the one that matches the SKU in the receipt
+		for _, sProd := range subProds {
+			sku = CheckPath("SKU", sProd)
+			_, ok := skus[sku]
+			if ok { //if the sku exists in the order data
+				//Get the product data from the top level of the cv3 return
+				prodInterface := AddReceiptItem(sku, prod, item, skus, &WorkCTX{}, itemFieldMap)
+				if prodInterface != nil {
+					prod = prodInterface.(*SalesReceiptLineAdd)
+					//Get the product data from the specific sub product
+					prodInterface = AddReceiptItem(sku, prod, sProd, skus, workCTX, itemFieldMap)
+					if prodInterface != nil {
+						prod = prodInterface.(*SalesReceiptLineAdd)
+						//Add the product data to the quickbooks response data.
+						receipt.SalesReceiptLineAdds = append(receipt.SalesReceiptLineAdds, *prod)
+					}
+				}
+			}
+		}
+	} else { //not an attribute, or subproduct product
+		sku = CheckPath("SKU", item)
+		_, ok := skus[sku]
+		if ok { //if the sku exists in the order data
+			//Add all product data
+			prodInterface := AddReceiptItem(sku, prod, item, skus, workCTX, itemFieldMap)
+			prod = prodInterface.(*SalesReceiptLineAdd)
+			//Add the product data to the quickbooks response data.
+			receipt.SalesReceiptLineAdds = append(receipt.SalesReceiptLineAdds, *prod)
+		}
+	} //end else of attribute check
+}
+
 //SalesReceiptAdd is the struct for added sales receipts from cv3 to qb
 type SalesReceiptAdd struct {
 	CV3OrderID              string            //to keep track of order success
@@ -510,11 +582,85 @@ type SalesReceiptAdd struct {
 	ExchangeRate            float64           `xml:"ExchangeRate,ommitempty"`
 	ExternalGUID            string            `xml:"ExternalGUID"` //ExternalGUID ragex = "0|(\{[0-9a-fA-F]{8}(\-([0-9a-fA-F]{4})){3}\-[0-9a-fA-F]{12}\})"
 	//1<!-- BEGIN OR --> <<<probably
-	SalesReceiptLineAdd []SalesReceiptLineAdd `xml:"SalesReceiptLineAdd,ommitempty"`
+	SalesReceiptLineAdds []SalesReceiptLineAdd `xml:"SalesReceiptLineAdd,ommitempty"`
 	//1<!-- OR -->
 	SalesReceiptLineGroupAdd []SalesReceiptLineGroupAdd `xml:"SalesReceiptLineGroupAdd,ommitempty"`
 	//1<!-- END OR -->
 	IncludeRetElement string `xml:"IncludeRetElement,ommitempty"`
+}
+
+//OrderOrReceiptAdd Interface for SalesOrders or SalesReceiptsAdds
+type OrderOrReceiptAdd interface {
+	BuildLineItems()
+}
+
+// BuildLineItems will take a *gabs.Container of CV3 items, itemFieldMap, skus a map of items, checks for sub or attribute products and adds them to the SalesOrderAdd object
+func (order *SalesOrderAdd) BuildLineItems(item *gabs.Container, itemFieldMap map[string]string, skus map[string]interface{}, workCTX *WorkCTX) { //*SalesOrderAdd {
+	var prod *SalesOrderLineAdd
+	var sku string
+	//Check if this is an attribute product
+	attr, err := item.Path("Attributes").Children()
+	if err != nil {
+		Log.WithFields(logrus.Fields{"Error": err}).Error("Error making attribute children in SalesReceiptAdd")
+		ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error making attribute children in SalesReceiptAdd")
+	}
+	//Check if this is asubproduct
+	subProds, err := item.Path("SubProducts").Children()
+	if err != nil {
+		Log.WithFields(logrus.Fields{"Error": err}).Error("Error making SubProducts children in SalesReceiptAdd")
+		ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error making SubProducts children in SalesReceiptAdd")
+	}
+	if len(attr) > 1 { //if its an attribute product
+		//Range over all attribute options and find the one that matches the SKU in the order
+		for _, at := range attr {
+			sku = CheckPath("SKU", at)
+			_, ok := skus[sku]
+			if ok { //if the sku exited in the order info
+				//Get the product data from the top level of the cv3 return
+				prodInterface := AddOrderItem(sku, prod, item, skus, &WorkCTX{}, itemFieldMap)
+				if prodInterface != nil {
+					prod = prodInterface.(*SalesOrderLineAdd)
+					//Get the product data from the specific attribute product
+					prodInterface = AddOrderItem(sku, prod, at, skus, workCTX, itemFieldMap)
+					if prodInterface != nil {
+						prod = prodInterface.(*SalesOrderLineAdd)
+						//Add the product data to the quickbooks response data.
+						order.SalesOrderLineAdds = append(order.SalesOrderLineAdds, *prod)
+					}
+				}
+			}
+		}
+	} else if len(subProds) > 1 { //if its a sub product
+		//Range over all sub product options and find the one that matches the SKU in the order
+		for _, sProd := range subProds {
+			sku = CheckPath("SKU", sProd)
+			_, ok := skus[sku]
+			if ok { //if the sku matches what was in the order data
+				//Get the product data from the top level of the cv3 product return
+				prodInterface := AddOrderItem(sku, prod, item, skus, &WorkCTX{}, itemFieldMap)
+				if prodInterface != nil {
+					prod = prodInterface.(*SalesOrderLineAdd)
+					//get the product data from the specific sub product
+					prodInterface = AddOrderItem(sku, prod, sProd, skus, workCTX, itemFieldMap)
+					if prodInterface != nil {
+						prod = prodInterface.(*SalesOrderLineAdd)
+						//Add the product data to the quickbooks response data.
+						order.SalesOrderLineAdds = append(order.SalesOrderLineAdds, *prod)
+					}
+				}
+			}
+		}
+	} else { //not an attribute, or subproduct product
+		sku = CheckPath("SKU", item)
+		_, ok := skus[sku]
+		if ok { //if the sku was in the order data
+			//Add all product data
+			prodInterface := AddOrderItem(sku, prod, item, skus, workCTX, itemFieldMap)
+			prod = prodInterface.(*SalesOrderLineAdd)
+			//Add the product data to the quickbooks response data.
+			order.SalesOrderLineAdds = append(order.SalesOrderLineAdds, *prod)
+		}
+	} //end else of attribute check
 }
 
 //SalesOrderAdd is the struct to hold the variables for the qbxml call
@@ -786,17 +932,18 @@ type SalesReceiptLineGroupRet struct {
 
 //Config is the struct to hold the config data
 type Config struct {
-	OrderType              string         `json:"orderType"`   //SalesReceipt, or SalesOrder are current options, case insensitive
-	InitQBItems            bool           `json:"initQBItems"` //adds the Shipping item to QuickBooks
-	AutoImportCV3Items     bool           `json:"autoImportCV3Items"`
-	ItemUpdates            ItemUpdates    `json:"itemUpdates"`
-	ListenPort             string         `json:"listenPort"`
-	Logging                Logging        `json:"logging"`
-	CV3Credentials         CV3Credentials `json:"cv3Credentials"`
-	QBWCCredentials        Credentials    `json:"qbwcCredentials"`
-	ServerVersion          string         `json:"serverVersion"`
-	QBWCVersion            string         `json:"qbwcVersion"`
-	CloseConnectionMessage string         `json:"closeConnectionMessage"`
+	OrderType              string                       `json:"orderType"`   //SalesReceipt, or SalesOrder are current options, case insensitive
+	InitQBItems            bool                         `json:"initQBItems"` //adds the Shipping item to QuickBooks
+	AutoImportCV3Items     bool                         `json:"autoImportCV3Items"`
+	ItemUpdates            ItemUpdates                  `json:"itemUpdates"`
+	ListenPort             string                       `json:"listenPort"`
+	Logging                Logging                      `json:"logging"`
+	CV3Credentials         CV3Credentials               `json:"cv3Credentials"`
+	QBWCCredentials        Credentials                  `json:"qbwcCredentials"`
+	ServerVersion          string                       `json:"serverVersion"`
+	QBWCVersion            string                       `json:"qbwcVersion"`
+	CloseConnectionMessage string                       `json:"closeConnectionMessage"`
+	HardCodedFields        map[string]map[string]string `json:"hardCodedFields"`
 }
 
 //ItemUpdates is part of the config to keep track of item updates
@@ -839,4 +986,89 @@ type ShipToSuccessTracker struct {
 	Success        bool
 	QBErrorCode    string
 	QBErrorMessage string
+}
+
+//CustomerAddRq is the top level struct for holding the CustomerAddRq data
+type CustomerAddRq struct {
+	Name                      string                 `xml:"Name"`
+	IsActive                  string                 `xml:"IsActive"`
+	ClassRef                  AccountRef             `xml:"ClassRef"`
+	ParentRef                 AccountRef             `xml:"ParentRef"`
+	CompanyName               string                 `xml:"CompanyName"`
+	Salutation                string                 `xml:"Salutation"`
+	FirstName                 string                 `xml:"FirstName"`
+	MiddleName                string                 `xml:"MiddleName"`
+	LastName                  string                 `xml:"LastName"`
+	JobTitle                  string                 `xml:"JobTitle"`
+	BillAddress               Address                `xml:"BillAddress"`
+	ShipAddress               Address                `xml:"ShipAddress"`
+	ShipToAddress             []QBShipToAddress      `xml:"ShipToAddress"`
+	Phone                     string                 `xml:"Phone"`
+	AltPhone                  string                 `xml:"AltPhone"`
+	Fax                       string                 `xml:"Fax"`
+	Email                     string                 `xml:"Email"`
+	Cc                        string                 `xml:"Cc"`
+	Contact                   string                 `xml:"Contact"`
+	AltContact                string                 `xml:"AltContact"`
+	AdditionalContactRef      []AdditionalContactRef `xml:"AdditionalContactRef"`
+	Contacts                  []Contacts             `xml:"Contacts"`
+	CustomerTypeRef           AccountRef             `xml:"CustomerTypeRef"`
+	TermsRef                  AccountRef             `xml:"TermsRef"`
+	SalesRepRef               AccountRef             `xml:"SalesRepRef"`
+	OpenBalance               string                 `xml:"OpenBalance"`
+	OpenBalanceDate           string                 `xml:"OpenBalanceDate"`
+	SalesTaxCodeRef           AccountRef             `xml:"SalesTaxCodeRef"`
+	ItemSalesTaxRef           AccountRef             `xml:"ItemSalesTaxRef"`
+	ResaleNumber              string                 `xml:"ResaleNumber"`
+	AccountNumber             string                 `xml:"AccountNumber"`
+	CreditLimit               string                 `xml:"CreditLimit"`
+	PreferredPaymentMethodRef AccountRef             `xml:"PreferredPaymentMethodRef"`
+	CreditCardInfo            CreditCardInfo         `xml:"CreditCardInfo"`
+	JobStatus                 string                 `xml:"JobStatus"`
+	JobStartDate              string                 `xml:"JobStartDate"`
+	JobProjectedEndDate       string                 `xml:"JobProjectedEndDate"`
+	JobEndDate                string                 `xml:"JobEndDate"`
+	JobDesc                   string                 `xml:"JobDesc"`
+	JobTypeRef                AccountRef             `xml:"JobTypeRef"`
+	Notes                     string                 `xml:"Notes"`
+	AdditionalNotes           []struct {
+		Note string `xml:"Note"`
+	} `xml:"AdditionalNotes"`
+	PreferredDeliveryMethod string     `xml:"PreferredDeliveryMethod"`
+	PriceLevelRef           AccountRef `xml:"PriceLevelRef"`
+	ExternalGUID            string     `xml:"ExternalGUID"`
+	CurrencyRef             AccountRef `xml:"CurrencyRef"`
+}
+
+//QBShipToAddress holds a quickbooks customer's shipTo addresses
+type QBShipToAddress struct {
+	Address
+	Name          string `xml:"Name"`
+	DefaultShipTo string `xml:"DefaultShipTo"`
+}
+
+//AdditionalContactRef is a unique ref struct to hold contact information
+type AdditionalContactRef struct {
+	ContactName  string `xml:"ContactName"`
+	ContactValue string `xml:"ContactValue"`
+}
+
+//Contacts is a struct to hold contact information when adding a customer
+type Contacts struct {
+	Salutation           string                 `xml:"Salutation"`
+	FirstName            string                 `xml:"FirstName"`
+	MiddleName           string                 `xml:"MiddleName"`
+	LastName             string                 `xml:"LastName"`
+	JobTitle             string                 `xml:"JobTitle"`
+	AdditionalContactRef []AdditionalContactRef `xml:"AdditionalContactRef"`
+}
+
+//CreditCardInfo is to hold the credit card info whwen adding a customer
+type CreditCardInfo struct {
+	CreditCardNumber     string `xml:"CreditCardNumber"`
+	ExpirationMonth      string `xml:"ExpirationMonth"`
+	ExpirationYear       string `xml:"ExpirationYear"`
+	NameOnCard           string `xml:"NameOnCard"`
+	CreditCardAddress    string `xml:"CreditCardAddress"`
+	CreditCardPostalCode string `xml:"CreditCardPostalCode"`
 }

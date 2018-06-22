@@ -109,7 +109,7 @@
             </CreditCardTxnInfo>{{end}}{{if .Other}}
             <Other >{{.Other}}</Other>{{end}}{{if .ExchangeRate}}
             <ExchangeRate >{{.ExchangeRate}}</ExchangeRate>{{end}}{{if .ExternalGUID}}
-            <ExternalGUID >{{.ExternalGUID}}{{/*regex "0|(\{[0-9a-fA-F]{8}(\-([0-9a-fA-F]{4})){3}\-[0-9a-fA-F]{12}\})"*/}}</ExternalGUID>{{end}}{{if .SalesReceiptLineAdd}}{{range $index, $lineAdd := .SalesReceiptLineAdd}}
+            <ExternalGUID >{{.ExternalGUID}}{{/*regex "0|(\{[0-9a-fA-F]{8}(\-([0-9a-fA-F]{4})){3}\-[0-9a-fA-F]{12}\})"*/}}</ExternalGUID>{{end}}{{if .SalesReceiptLineAdds}}{{range $index, $lineAdd := .SalesReceiptLineAdds}}
             <SalesReceiptLineAdd >{{if or $lineAdd.ItemRef.ListID $lineAdd.ItemRef.FullName}}
                <ItemRef>{{if $lineAdd.ItemRef.ListID}}
                   <ListID >{{ $lineAdd.ItemRef.ListID}}</ListID>{{end}}{{if $lineAdd.ItemRef.FullName}}
