@@ -101,7 +101,7 @@ func CheckNodes(nodes []Node, parentNode Node, f func(Node, Node) bool) {
 }
 
 //SendReceiveResponseXMLResponse sends the response to QBWC's receiveResponseXML call
-//this function receives the workCTX used i SendSendRequestXML on one of the checkWork channels.
+//this function receives the workCTX used in SendSendRequestXML on one of the checkWork channels.
 //Then determines what type of response has been received by switching on the xml node name, then runs the corresponding function,
 //Next determines if there is more work to be done, then sends its response
 func SendReceiveResponseXMLResponse(parentNode Node, w http.ResponseWriter) {
@@ -207,23 +207,37 @@ func SendSendRequestXMLResponse(parentNode Node, w http.ResponseWriter) {
 		//check the workInsert channel first
 		case work, ok := <-workInsertChan:
 			if ok {
-				//Need to track the work being
-				checkWorckInsertChan <- work
-				//add work to the Queue
-				globalSession.QBXMLWorkQueue = append(globalSession.QBXMLWorkQueue, work.Work)
+				if work.Attempted < cfg.MaxWorkAttempts {
+					work.Attempted++
+					//Need to track the work being
+					checkWorckInsertChan <- work
+					//add work to the Queue
+					globalSession.QBXMLWorkQueue = append(globalSession.QBXMLWorkQueue, work.Work)
+				} else { //too many retires on this workCTX
+					Log.WithFields(logrus.Fields{"Attempts": work.Attempted}).Error("This work has been retried too many times")
+					ErrLog.WithFields(logrus.Fields{"Attempts": work.Attempted}).Error("This work has been retried too many times")
+					SendSendRequestXMLResponse(parentNode, w)
+				}
 			}
 			break
 		//check the normal work channel if the insert channel is empty
 		case work, ok := <-workChan:
 			if ok {
-				if work.Work == "" { //No work, ask QB to pause for 5 seconds
-					getLastErrChan <- "NoOp"
-					Log.Debug("sending NoOp on getLastErrChan")
-				} else { //Need to track the work being done
-					checkWorckChan <- work
+				if work.Attempted < cfg.MaxWorkAttempts {
+					if work.Work == "" { //No work, ask QB to pause for 5 seconds
+						getLastErrChan <- "NoOp"
+						Log.Debug("sending NoOp on getLastErrChan")
+					} else { //Need to track the work being done
+						work.Attempted++
+						checkWorckChan <- work
+					}
+					//add work to the work queue
+					globalSession.QBXMLWorkQueue = append(globalSession.QBXMLWorkQueue, work.Work)
+				} else { //too many retires on this workCTX
+					Log.WithFields(logrus.Fields{"Attempts": work.Attempted}).Error("This work has been retried too many times")
+					ErrLog.WithFields(logrus.Fields{"Attempts": work.Attempted}).Error("This work has been retried too many times")
+					SendSendRequestXMLResponse(parentNode, w)
 				}
-				//add work to the work queue
-				globalSession.QBXMLWorkQueue = append(globalSession.QBXMLWorkQueue, work.Work)
 			}
 			break
 		default: //happens during NoOp

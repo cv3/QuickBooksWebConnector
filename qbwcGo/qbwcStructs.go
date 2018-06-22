@@ -10,6 +10,7 @@ import (
 
 //WorkCTX is a struct that will hold both the work to be done, and the data used to create it
 type WorkCTX struct {
+	Attempted   int             //keeps track of how many times this work was attempted
 	Work        string          //holds the excaped qbxml
 	Data        interface{}     //holds the struct that created the qbxml
 	Order       *gabs.Container //holds the origional order information
@@ -932,18 +933,18 @@ type SalesReceiptLineGroupRet struct {
 
 //Config is the struct to hold the config data
 type Config struct {
-	OrderType              string                       `json:"orderType"`   //SalesReceipt, or SalesOrder are current options, case insensitive
-	InitQBItems            bool                         `json:"initQBItems"` //adds the Shipping item to QuickBooks
-	AutoImportCV3Items     bool                         `json:"autoImportCV3Items"`
-	ItemUpdates            ItemUpdates                  `json:"itemUpdates"`
-	ListenPort             string                       `json:"listenPort"`
-	Logging                Logging                      `json:"logging"`
-	CV3Credentials         CV3Credentials               `json:"cv3Credentials"`
-	QBWCCredentials        Credentials                  `json:"qbwcCredentials"`
-	ServerVersion          string                       `json:"serverVersion"`
-	QBWCVersion            string                       `json:"qbwcVersion"`
-	CloseConnectionMessage string                       `json:"closeConnectionMessage"`
-	HardCodedFields        map[string]map[string]string `json:"hardCodedFields"`
+	OrderType              string         `json:"orderType"`   //SalesReceipt, or SalesOrder are current options, case insensitive
+	InitQBItems            bool           `json:"initQBItems"` //adds the Shipping item to QuickBooks
+	AutoImportCV3Items     bool           `json:"autoImportCV3Items"`
+	ItemUpdates            ItemUpdates    `json:"itemUpdates"`
+	ListenPort             string         `json:"listenPort"`
+	Logging                Logging        `json:"logging"`
+	CV3Credentials         CV3Credentials `json:"cv3Credentials"`
+	QBWCCredentials        Credentials    `json:"qbwcCredentials"`
+	ServerVersion          string         `json:"serverVersion"`
+	QBWCVersion            string         `json:"qbwcVersion"`
+	CloseConnectionMessage string         `json:"closeConnectionMessage"`
+	MaxWorkAttempts        int            `json:"maxWorkAttempts"`
 }
 
 //ItemUpdates is part of the config to keep track of item updates

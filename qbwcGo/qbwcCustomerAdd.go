@@ -3,8 +3,6 @@ package qbwcGo
 import (
 	"bytes"
 	"encoding/xml"
-	"strconv"
-	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/TeamFairmont/gabs"
@@ -17,23 +15,22 @@ func CustomerAddQB(workCTX WorkCTX) {
 	var tPath = `./templates/qbCustomerAdd.t`
 	var customer = CustomerAddRq{}
 	var fieldMap = ReadFieldMapping("./fieldMaps/customerAddMapping.json")
-	var shipToIndex string
-	var isReceipt bool
+	//var shipToIndex string
+	//var isReceipt bool
 	switch workCTX.Data.(type) {
 	case SalesReceiptAdd:
-		isReceipt = true
-		shipToIndex = strconv.Itoa(workCTX.Data.(SalesReceiptAdd).ShipToIndex)
+		//isReceipt = true
+		//shipToIndex = strconv.Itoa(workCTX.Data.(SalesReceiptAdd).ShipToIndex)
 		customer.BillAddress = workCTX.Data.(SalesReceiptAdd).BillAddress
 		customer.ShipAddress = workCTX.Data.(SalesReceiptAdd).ShipAddress
 
 	case SalesOrderAdd:
-		isReceipt = false
-		shipToIndex = strconv.Itoa(workCTX.Data.(SalesOrderAdd).ShipToIndex)
+		//isReceipt = false
+		//shipToIndex = strconv.Itoa(workCTX.Data.(SalesOrderAdd).ShipToIndex)
 		customer.BillAddress = workCTX.Data.(SalesOrderAdd).BillAddress
 		customer.ShipAddress = workCTX.Data.(SalesOrderAdd).ShipAddress
 	}
-	_ = isReceipt
-	_ = shipToIndex
+
 	//prepare the shipTo gabs container for a range loop
 	shipToMapper, err := workCTX.Order.Path("shipTos").Children()
 	if err != nil {
@@ -80,22 +77,17 @@ func CustomerAddQB(workCTX WorkCTX) {
 		qbShipTo.Country = FieldCharLimit(CheckPath("country", shipTo), countryCharLimit)
 		qbShipTo.Name = CheckPath("name", shipTo)
 		//qbShipTo.Note =
-		//qbShipTo.DefaultShipTo
+		//qbShipTo.DefaultShipTo =
 		qbShipTos[i] = qbShipTo
 	}
 
-	if strings.ToLower(CheckPath("billing.firstName", workCTX.Order)) != "paypal" {
-		customer.Name = CheckPath("billing.lastName", workCTX.Order) + " " + CheckPath("billing.firstName", workCTX.Order)
-		//customer.AccountNumber = CheckPath(fieldMap["AccountNumber"], workCTX.Order)
-		customer.Email = CheckPath(fieldMap["Email"], workCTX.Order)
-		customer.Phone = CheckPath("billing.phone", workCTX.Order)
-		customer.FirstName = CheckPath("billing.firstName", workCTX.Order)
-		customer.LastName = CheckPath("billing.lastName", workCTX.Order)
-		ErrLog.WithFields(logrus.Fields{"Customer Name": strings.ToLower(CheckPath("billing.firstName", workCTX.Order))}).Error("customer name is not paypal")
-	} else { //if billing name is paypal
-		ErrLog.WithFields(logrus.Fields{"Customer name": strings.ToLower(CheckPath("billing.firstName", workCTX.Order))}).Error("Customer does contain paypal")
-		return //cancel the function, paypal is not a customer name
-	}
+	customer.Name = CheckPath("billing.lastName", workCTX.Order) + ", " + CheckPath("billing.firstName", workCTX.Order)
+	//customer.AccountNumber = CheckPath(fieldMap["AccountNumber"], workCTX.Order)
+	customer.Email = CheckPath(fieldMap["Email"], workCTX.Order)
+	customer.Phone = CheckPath("billing.phone", workCTX.Order)
+	customer.FirstName = CheckPath("billing.firstName", workCTX.Order)
+	customer.LastName = CheckPath("billing.lastName", workCTX.Order)
+
 	customer.Cc = CheckPath(fieldMap["Cc"], workCTX.Order)
 	customer.ClassRef.FullName = CheckPath(fieldMap["ClassRef.FullName"], workCTX.Order)
 	customer.ClassRef.ListID = CheckPath(fieldMap["ClassRef.ListID"], workCTX.Order)
@@ -107,11 +99,9 @@ func CustomerAddQB(workCTX WorkCTX) {
 	if err != nil {
 		Log.WithFields(logrus.Fields{"error": err}).Error("Error Escaping template in ImportCV3ItemsToQB")
 	}
-	ErrLog.Error("about to send work insert")
 	//Send prepaired QBXML to the workInsertChan
 	workInsertChan <- WorkCTX{Work: escapedQBXML.String(), Data: workCTX.Data, Order: workCTX.Order, Type: "customerAddRq"}
 	workChan <- workCTX
-	ErrLog.WithFields(logrus.Fields{"customer add work": WorkCTX{Work: escapedQBXML.String(), Data: workCTX.Data, Order: workCTX.Order, Type: "customerAddRq"}}).Error("Work inserts sent")
 }
 
 //BuildCustomerFromCV3Order takes a cv3 order *gabs.Container and builds a customerAdd object
