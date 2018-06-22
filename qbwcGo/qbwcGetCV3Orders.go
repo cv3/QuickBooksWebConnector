@@ -172,7 +172,7 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			//TODO
 			//If the billing name is not paypal, use it as the customers name
 			if !strings.Contains(strings.ToLower(CheckPath("billing.firstName", o)), "paypal") {
-				qbReceiptAdd.CustomerRef.FullName = CheckPath("billing.firstName", o) + " " + CheckPath("billing.lastName", o)
+				qbReceiptAdd.CustomerRef.FullName = CheckPath("billing.lastName", o) + " " + CheckPath("billing.firstName", o)
 			} else { //billing name is paypal, use shipTo name?
 				//Do not add customer
 				//qbReceiptAdd.CustomerRef.FullName = CheckPath(fieldMap["CustomerRef.FullName"], shipTo) //Customer must exist in QB for a salesReceiptAdd
