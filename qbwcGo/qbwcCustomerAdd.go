@@ -85,7 +85,7 @@ func CustomerAddQB(workCTX WorkCTX) {
 	}
 
 	if strings.ToLower(CheckPath("billing.firstName", workCTX.Order)) != "paypal" {
-		//customer.Name = CheckPath("billing.firstName", workCTX.Order) + " " + CheckPath("billing.lastName", workCTX.Order)
+		customer.Name = CheckPath("billing.lastName", workCTX.Order) + " " + CheckPath("billing.firstName", workCTX.Order)
 		//customer.AccountNumber = CheckPath(fieldMap["AccountNumber"], workCTX.Order)
 		customer.Email = CheckPath(fieldMap["Email"], workCTX.Order)
 		customer.Phone = CheckPath("billing.phone", workCTX.Order)
