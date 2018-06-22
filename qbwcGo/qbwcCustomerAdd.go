@@ -91,7 +91,9 @@ func CustomerAddQB(workCTX WorkCTX) {
 		customer.Phone = CheckPath("billing.phone", workCTX.Order)
 		customer.FirstName = CheckPath("billing.firstName", workCTX.Order)
 		customer.LastName = CheckPath("billing.lastName", workCTX.Order)
+		ErrLog.WithFields(logrus.Fields{"Customer Name": strings.ToLower(CheckPath("billing.firstName", workCTX.Order))}).Error("customer name is not paypal")
 	} else { //if billing name is paypal
+		ErrLog.WithFields(logrus.Fields{"Customer name": strings.ToLower(CheckPath("billing.firstName", workCTX.Order))}).Error("Customer does contain paypal")
 		return //cancel the function, paypal is not a customer name
 	}
 	customer.Cc = CheckPath(fieldMap["Cc"], workCTX.Order)
@@ -105,9 +107,11 @@ func CustomerAddQB(workCTX WorkCTX) {
 	if err != nil {
 		Log.WithFields(logrus.Fields{"error": err}).Error("Error Escaping template in ImportCV3ItemsToQB")
 	}
+	ErrLog.Error("about to send work insert")
 	//Send prepaired QBXML to the workInsertChan
 	workInsertChan <- WorkCTX{Work: escapedQBXML.String(), Data: workCTX.Data, Order: workCTX.Order, Type: "customerAddRq"}
 	workChan <- workCTX
+	ErrLog.WithFields(logrus.Fields{"customer add work": WorkCTX{Work: escapedQBXML.String(), Data: workCTX.Data, Order: workCTX.Order, Type: "customerAddRq"}}).Error("Work inserts sent")
 }
 
 //BuildCustomerFromCV3Order takes a cv3 order *gabs.Container and builds a customerAdd object
