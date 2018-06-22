@@ -172,12 +172,8 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			//TODO
 			//If the billing name is not paypal, use it as the customers name
 			if !strings.Contains(strings.ToLower(CheckPath("billing.firstName", o)), "paypal") {
-				qbReceiptAdd.CustomerRef.FullName = CheckPath("billing.lastName", o) + " " + CheckPath("billing.firstName", o)
-			} else { //billing name is paypal, use shipTo name?
-				//Do not add customer
-				//qbReceiptAdd.CustomerRef.FullName = CheckPath(fieldMap["CustomerRef.FullName"], shipTo) //Customer must exist in QB for a salesReceiptAdd
-				//qbReceiptAdd.CustomerRef.ListID = CheckPath(fieldMap["CustomerRef.ListID"], shipTo)
-			}
+				qbReceiptAdd.CustomerRef.FullName = CheckPath("billing.lastName", o) + ", " + CheckPath("billing.firstName", o)
+			} //else bliiling firstname is paypal, so do not add any customer info
 			qbReceiptAdd.ShipDate = CheckPath(fieldMap["ShipDate"], shipTo)
 
 			//Start shipping address
@@ -475,11 +471,9 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 			//TODO
 			//If the billing name is not paypal, use it as the customers name
 			if !strings.Contains(strings.ToLower(CheckPath("billing.firstName", o)), "paypal") {
-				qbOrderAdd.CustomerRef.FullName = CheckPath("billing.firstName", o) + " " + CheckPath("billing.lastName", o)
-			} else { //billing name is paypal, use shipTo name?
-				//Do not set customer
-				//qbOrderAdd.CustomerRef.FullName = CheckPath(fieldMap["CustomerRef.FullName"], shipTo)
-				//qbOrderAdd.CustomerRef.ListID = CheckPath(fieldMap["CustomerRef.ListID"], shipTo)
+				qbOrderAdd.CustomerRef.FullName = CheckPath("billing.lastName", o) + ", " + CheckPath("billing.firstName", o)
+			} else { //billing firstName is paypal, so just add paypal as a CustomerRef is required for a SalesOrderAdd
+				qbOrderAdd.CustomerRef.FullName = CheckPath("billing.firstName", o)
 			}
 			qbOrderAdd.ShipDate = CheckPath(fieldMap["ShipDate"], shipTo)
 
