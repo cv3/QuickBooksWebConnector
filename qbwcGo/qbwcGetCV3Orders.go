@@ -164,7 +164,8 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 
 			qbReceiptAdd.ShipMethodRef.FullName = CheckPath(fieldMap["ShipMethodRef.FullName"], shipTo)
 			qbReceiptAdd.ShipMethodRef.ListID = CheckPath(fieldMap["ShipMethodRef.ListID"], shipTo)
-			qbReceiptAdd.Memo = CheckPath(fieldMap["Memo"], o)
+			//hard code prefix for Beatrirce bakery
+			qbReceiptAdd.Memo = "WEB#" + CheckPath(fieldMap["Memo"], o)
 			qbReceiptAdd.PaymentMethodRef.FullName = CheckPath(fieldMap["PaymentMethodRef.FullName"], o)
 			qbReceiptAdd.PaymentMethodRef.ListID = CheckPath(fieldMap["PaymentMethodRef.ListID"], o)
 			//TODO
@@ -266,6 +267,17 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 					//these variables must be set from the shipToProducts
 					tempInterface := AddReceiptItem("sku", temp, prod, skus, &WorkCTX{}, shipToProductFieldMap)
 					temp = tempInterface.(*SalesReceiptLineAdd)
+					//store attribute descriptions, so they can be matched later
+					attributes, err := prod.Path("attributes").ChildrenMap()
+					if err != nil {
+						Log.WithFields(logrus.Fields{"Error": err}).Error("Error macking product attribute children in SalesReceiptAdd")
+						ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error macking product attribute children in SalesReceiptAdd")
+					}
+					temp.Attributes = make(map[string]string, len(attributes))
+					for key, attribute := range attributes {
+						temp.Attributes[key] = attribute.Data().(string)
+					}
+					//temp.Attributes =
 					skus[CheckPath("SKU", prod)] = temp
 				}
 			}
@@ -294,6 +306,7 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			for _, item := range prodChildren {
 				qbReceiptAdd.BuildLineItems(item, itemFieldMap, skus, workCTX)
 			}
+
 			qbReceiptAdd.TxnDate = CheckPath(fieldMap["TxnDate"], o)
 			shipMap := ReadFieldMapping("./fieldMaps/shippingReceiptMapping.json")
 			//Add shipping
@@ -539,6 +552,16 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 					//these variables must be set from the shipToProducts
 					tempInterface := AddOrderItem("sku", temp, prod, skus, &WorkCTX{}, shipToProductFieldMap)
 					temp = tempInterface.(*SalesOrderLineAdd)
+					//store attribute descriptions, so they can be matched later
+					attributes, err := prod.Path("attributes").ChildrenMap()
+					if err != nil {
+						Log.WithFields(logrus.Fields{"Error": err}).Error("Error macking product attribute children in SalesOrderAdd")
+						ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error macking product attribute children in SalesOrderAdd")
+					}
+					temp.Attributes = make(map[string]string, len(attributes))
+					for key, attribute := range attributes {
+						temp.Attributes[key] = attribute.Data().(string)
+					}
 					skus[CheckPath("SKU", prod)] = temp
 				}
 			}
@@ -576,7 +599,7 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 			p.Quantity = shipMap["Quantity"]                 //"1"
 			//Set mapped fields
 			p.Amount = CheckPath(shipMap["Amount"], shipTo)
-			//set shipping description with the ship code
+			//maybe add via: for macs tie downs
 			p.Desc = CheckPath(shipMap["Desc"], shipTo)
 			p.ClassRef.FullName = CheckPath(shipMap["ClassRef.FullName"], shipTo)
 			p.ClassRef.ListID = CheckPath(shipMap["ClassRef.ListID"], shipTo)

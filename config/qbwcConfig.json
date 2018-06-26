@@ -23,5 +23,6 @@
 	},
 	"serverVersion": "",
 	"qbwcVersion": "",
+	"maxWorkAttempts":7,
 	"closeConnectionMessage": "Completed"
 }

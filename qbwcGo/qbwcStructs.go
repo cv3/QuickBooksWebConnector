@@ -1,6 +1,7 @@
 package qbwcGo
 
 import (
+	"bytes"
 	"encoding/xml"
 
 	"github.com/Sirupsen/logrus"
@@ -465,6 +466,7 @@ type SalesReceiptLineAdd struct {
 	Other2                 string            `xml:"Other2,ommitempty"`
 	CreditCardTxnInfo      CreditCardTxnInfo `xml:"CreditCardTxnInfo,ommitempty"`
 	DataExt                []DataExt         `xml:"DataExt,ommitempty"`
+	Attributes             map[string]string //holds the cv3 attribute descriptions
 }
 
 //SalesReceiptPart is an itermediate struct used before we know if the cv3 item is a group or single
@@ -503,18 +505,28 @@ func (receipt *SalesReceiptAdd) BuildLineItems(item *gabs.Container, itemFieldMa
 		//Range over all attribute options and find the one that matches the SKU in the receipt
 		for _, at := range attr {
 			sku = CheckPath("SKU", at)
-			_, ok := skus[sku]
+			pInterface, ok := skus[sku]
 			if ok { //if the sku exists in the order data
-				//Get the product data from the top level of the cv3 return
-				prodInterface := AddReceiptItem(sku, prod, item, skus, &WorkCTX{}, itemFieldMap)
-				if prodInterface != nil {
-					prod = prodInterface.(*SalesReceiptLineAdd)
-					//Get the product data from the specific attribute product
-					prodInterface = AddReceiptItem(sku, prod, at, skus, workCTX, itemFieldMap)
+				var p = pInterface.(*SalesReceiptLineAdd)
+				if MatchAttributeCombinations(at, p.Attributes) == len(p.Attributes) {
+					//Get the product data from the top level of the cv3 return
+					prodInterface := AddReceiptItem(sku, prod, item, skus, &WorkCTX{}, itemFieldMap)
 					if prodInterface != nil {
 						prod = prodInterface.(*SalesReceiptLineAdd)
-						//Add the product data to the quickbooks response data.
-						receipt.SalesReceiptLineAdds = append(receipt.SalesReceiptLineAdds, *prod)
+						//Get the product data from the specific attribute product
+						prodInterface = AddReceiptItem(sku, prod, at, skus, workCTX, itemFieldMap)
+						if prodInterface != nil {
+							prod = prodInterface.(*SalesReceiptLineAdd)
+							//append the attributes to the description
+							var attrBuf = bytes.NewBufferString(prod.Desc)
+							for _, attribute := range p.Attributes {
+								attrBuf.WriteString(" ")
+								attrBuf.WriteString(attribute)
+							}
+							prod.Desc = attrBuf.String()
+							//Add the product data to the quickbooks response data.
+							receipt.SalesReceiptLineAdds = append(receipt.SalesReceiptLineAdds, *prod)
+						}
 					}
 				}
 			}
@@ -550,6 +562,29 @@ func (receipt *SalesReceiptAdd) BuildLineItems(item *gabs.Container, itemFieldMa
 			receipt.SalesReceiptLineAdds = append(receipt.SalesReceiptLineAdds, *prod)
 		}
 	} //end else of attribute check
+}
+
+//MatchAttributeCombinations loops through all the returned attribute combinations, and matches them against what was sent in the order information.
+//This will return an int value to be compared with the length of attributes from the origional order information
+func MatchAttributeCombinations(at *gabs.Container, pAttributes map[string]string) int {
+	var attributeCombinationMatches = 0                       //count the attribute matches
+	attrCombination, err := at.Path("Combination").Children() //get slice of all attributes
+	if err != nil {
+		Log.WithFields(logrus.Fields{"Error": err}).Error("Error making attribute combination children in MatchAttributeCombinations")
+		ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error making attribute combination children in MatchAttributeCombinations")
+	}
+	//range over all attributes from the origional order information
+	//then range over all attribute possibilities from the returned product
+	//check if every attribute combination matches, otherwise it is te wrong attribute combination
+	//then return the number of matches, to be compared with the length of the attribute combinations from the origional order information
+	for _, orderAttributeDescription := range pAttributes {
+		for _, atComb := range attrCombination {
+			if orderAttributeDescription == CheckPath("content", atComb) {
+				attributeCombinationMatches++
+			}
+		}
+	}
+	return attributeCombinationMatches
 }
 
 //SalesReceiptAdd is the struct for added sales receipts from cv3 to qb
@@ -615,18 +650,27 @@ func (order *SalesOrderAdd) BuildLineItems(item *gabs.Container, itemFieldMap ma
 		//Range over all attribute options and find the one that matches the SKU in the order
 		for _, at := range attr {
 			sku = CheckPath("SKU", at)
-			_, ok := skus[sku]
+			pInterface, ok := skus[sku]
 			if ok { //if the sku exited in the order info
-				//Get the product data from the top level of the cv3 return
-				prodInterface := AddOrderItem(sku, prod, item, skus, &WorkCTX{}, itemFieldMap)
-				if prodInterface != nil {
-					prod = prodInterface.(*SalesOrderLineAdd)
-					//Get the product data from the specific attribute product
-					prodInterface = AddOrderItem(sku, prod, at, skus, workCTX, itemFieldMap)
+				var p = pInterface.(*SalesOrderLineAdd)
+				if MatchAttributeCombinations(at, p.Attributes) == len(p.Attributes) {
+					//Get the product data from the top level of the cv3 return
+					prodInterface := AddOrderItem(sku, prod, item, skus, &WorkCTX{}, itemFieldMap)
 					if prodInterface != nil {
 						prod = prodInterface.(*SalesOrderLineAdd)
-						//Add the product data to the quickbooks response data.
-						order.SalesOrderLineAdds = append(order.SalesOrderLineAdds, *prod)
+						//Get the product data from the specific attribute product
+						prodInterface = AddOrderItem(sku, prod, at, skus, workCTX, itemFieldMap)
+						if prodInterface != nil {
+							prod = prodInterface.(*SalesOrderLineAdd)
+							//append the attributes to the description
+							var attrBuf = bytes.NewBufferString(prod.Desc)
+							for _, attribute := range p.Attributes {
+								attrBuf.WriteString(" ")
+								attrBuf.WriteString(attribute)
+							}
+							//Add the product data to the quickbooks response data.
+							order.SalesOrderLineAdds = append(order.SalesOrderLineAdds, *prod)
+						}
 					}
 				}
 			}
@@ -698,25 +742,26 @@ type SalesOrderAdd struct {
 
 //SalesOrderLineAdd holds the information about the items in the sales order
 type SalesOrderLineAdd struct {
-	ItemRef                    AccountRef `xml:"ItemRef"`
-	Desc                       string     `xml:"Desc"`
-	Quantity                   string     `xml:"Quantity"`
-	UnitOfMeasure              string     `xml:"UnitOfMeasure"`
-	Rate                       string     `xml:"Rate"`
-	RatePercent                string     `xml:"RatePercent"`
-	PriceLevelRef              AccountRef `xml:"PriceLevelRef"`
-	ClassRef                   AccountRef `xml:"ClassRef"`
-	Amount                     string     `xml:"Amount"`
-	OptionForPriceRuleConflict string     `xml:"OptionForPriceRuleConflict"` //OptionForPriceRuleConflict may have one of the following values: Zero, BasePrice -->
-	InventorySiteRef           AccountRef `xml:"InventorySiteRef"`
-	InventorySiteLocationRef   AccountRef `xml:"InventorySiteLocationRef"`
-	SerialNumber               string     `xml:"SerialNumber"`
-	LotNumber                  string     `xml:"LotNumber"`
-	SalesTaxCodeRef            AccountRef `xml:"SalesTaxCodeRef"`
-	IsManuallyClosed           string     `xml:"IsManuallyClosed"`
-	Other1                     string     `xml:"Other1"`
-	Other2                     string     `xml:"Other2"`
-	DataExt                    []DataExt  `xml:"DataExt"`
+	ItemRef                    AccountRef        `xml:"ItemRef"`
+	Desc                       string            `xml:"Desc"`
+	Quantity                   string            `xml:"Quantity"`
+	UnitOfMeasure              string            `xml:"UnitOfMeasure"`
+	Rate                       string            `xml:"Rate"`
+	RatePercent                string            `xml:"RatePercent"`
+	PriceLevelRef              AccountRef        `xml:"PriceLevelRef"`
+	ClassRef                   AccountRef        `xml:"ClassRef"`
+	Amount                     string            `xml:"Amount"`
+	OptionForPriceRuleConflict string            `xml:"OptionForPriceRuleConflict"` //OptionForPriceRuleConflict may have one of the following values: Zero, BasePrice -->
+	InventorySiteRef           AccountRef        `xml:"InventorySiteRef"`
+	InventorySiteLocationRef   AccountRef        `xml:"InventorySiteLocationRef"`
+	SerialNumber               string            `xml:"SerialNumber"`
+	LotNumber                  string            `xml:"LotNumber"`
+	SalesTaxCodeRef            AccountRef        `xml:"SalesTaxCodeRef"`
+	IsManuallyClosed           string            `xml:"IsManuallyClosed"`
+	Other1                     string            `xml:"Other1"`
+	Other2                     string            `xml:"Other2"`
+	DataExt                    []DataExt         `xml:"DataExt"`
+	Attributes                 map[string]string //holds the cv3 attribute descriptions
 }
 
 //SalesOrderLineGroupAdd hold the information for the group items in a salesOrder
