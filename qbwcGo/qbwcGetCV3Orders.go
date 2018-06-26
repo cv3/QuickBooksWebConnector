@@ -113,6 +113,7 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			}
 			qbReceiptAdd.FOB = CheckPath(fieldMap["FOB"], o)
 			qbReceiptAdd.CustomerSalesTaxCodeRef.FullName = CheckPath(fieldMap["CustomerSalesTaxCodeRef.FullName"], o)
+			qbReceiptAdd.CustomerMsgRef.FullName = CheckPath(fieldMap["CustomerMsgRef.FullName"], shipTo)
 			qbReceiptAdd.CustomerSalesTaxCodeRef.ListID = CheckPath(fieldMap["CustomerSalesTaxCodeRef.ListID"], o)
 			qbReceiptAdd.ItemSalesTaxRef.FullName = CheckPath(fieldMap["ItemSalesTaxRef.FullName"], o)
 			qbReceiptAdd.ItemSalesTaxRef.ListID = CheckPath(fieldMap["ItemSalesTaxRef.ListID"], o)
@@ -211,7 +212,7 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			qbReceiptAdd.ShipAddress.PostalCode = FieldCharLimit(CheckPath("zip", shipTo), zipCharLimit)
 			qbReceiptAdd.ShipAddress.Country = FieldCharLimit(CheckPath("country", shipTo), countryCharLimit)
 
-			qbReceiptAdd.ShipAddress.Note = FieldCharLimit(CheckPath("message", shipTo), noteCharLimit)
+			//qbReceiptAdd.ShipAddress.Note = FieldCharLimit(CheckPath("message", shipTo), noteCharLimit)
 			//end shipping address
 			/*
 				//NO CCINFO WILL BE PASSED AT THIS TIME
@@ -432,7 +433,8 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 			qbOrderAdd.CustomerSalesTaxCodeRef.ListID = CheckPath(fieldMap["CustomerSalesTaxCodeRef.ListID"], o)
 			qbOrderAdd.ItemSalesTaxRef.FullName = CheckPath(fieldMap["ItemSalesTaxRef.FullName"], o)
 			qbOrderAdd.ItemSalesTaxRef.ListID = CheckPath(fieldMap["ItemSalesTaxRef.ListID"], o)
-			qbOrderAdd.SalesRepRef.FullName = CheckPath(fieldMap["SalesRepRef.FullName"], o)
+			//edit for mac's tie downs
+			qbOrderAdd.SalesRepRef.FullName = fieldMap["SalesRepRef.FullName"] //CheckPath(fieldMap["SalesRepRef.FullName"], o)
 			qbOrderAdd.SalesRepRef.ListID = CheckPath(fieldMap["SalesRepRef.ListID"], o)
 			qbOrderAdd.TemplateRef.FullName = CheckPath(fieldMap["TemplateRef.FullName"], o)
 			qbOrderAdd.TemplateRef.ListID = CheckPath(fieldMap["TemplateRef.ListID"], o)
@@ -599,6 +601,7 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 			p.Quantity = shipMap["Quantity"]                 //"1"
 			//Set mapped fields
 			p.Amount = CheckPath(shipMap["Amount"], shipTo)
+
 			//maybe add via: for macs tie downs
 			p.Desc = CheckPath(shipMap["Desc"], shipTo)
 			p.ClassRef.FullName = CheckPath(shipMap["ClassRef.FullName"], shipTo)
