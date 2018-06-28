@@ -438,7 +438,16 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 			qbOrderAdd.SalesRepRef.ListID = CheckPath(fieldMap["SalesRepRef.ListID"], o)
 			qbOrderAdd.TemplateRef.FullName = CheckPath(fieldMap["TemplateRef.FullName"], o)
 			qbOrderAdd.TemplateRef.ListID = CheckPath(fieldMap["TemplateRef.ListID"], o)
-			qbOrderAdd.TermsRef.FullName = CheckPath(fieldMap["TermsRef.FullName"], o)
+			if CheckPath(fieldMap["TermsRef.FullName"], o) == "creditcard" {
+				qbOrderAdd.TermsRef.FullName = "Credit Card"
+			} else if CheckPath(fieldMap["TermsRef.FullName"], o) == "paypal" {
+				qbOrderAdd.TermsRef.FullName = "PayPal"
+			} else if CheckPath(fieldMap["TermsRef.FullName"], o) == "ccpaypal" {
+				qbOrderAdd.TermsRef.FullName = "CCPaypal"
+			} else {
+				qbOrderAdd.TermsRef.FullName = CheckPath(fieldMap["TermsRef.FullName"], o)
+			}
+
 			qbOrderAdd.TermsRef.ListID = CheckPath(fieldMap["TermsRef.ListID"], o)
 			qbOrderAdd.IsManuallyClosed = CheckPath(fieldMap["IsManuallyClosed"], o)
 
