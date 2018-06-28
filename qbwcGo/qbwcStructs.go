@@ -668,6 +668,7 @@ func (order *SalesOrderAdd) BuildLineItems(item *gabs.Container, itemFieldMap ma
 								attrBuf.WriteString(" ")
 								attrBuf.WriteString(attribute)
 							}
+							prod.Desc = attrBuf.String()
 							//Add the product data to the quickbooks response data.
 							order.SalesOrderLineAdds = append(order.SalesOrderLineAdds, *prod)
 						}
