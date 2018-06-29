@@ -92,7 +92,13 @@ func CustomerAddQB(workCTX WorkCTX) {
 	customer.ClassRef.FullName = CheckPath(fieldMap["ClassRef.FullName"], workCTX.Order)
 	customer.ClassRef.ListID = CheckPath(fieldMap["ClassRef.ListID"], workCTX.Order)
 	customer.CompanyName = CheckPath(fieldMap["CompanyName"], workCTX.Order)
-	//customer. = CheckPath(fieldMap[""], workCTX.Order)
+
+	//Direct mappings credit card for Beatrice,
+	customer.PreferredPaymentMethodRef.FullName = fieldMap["PreferredPaymentMethodRef.FullName"] //CheckPath(fieldMap[""], workCTX.Order)
+	//Direct mappings NET for beatrice bakery
+	customer.TermsRef.FullName = fieldMap["TermsRef.FullName"]
+	//Direct mappings RETAIL for beatrice bakery
+	customer.PriceLevelRef.FullName = fieldMap["PriceLevelRef.FullName"]
 
 	LoadTemplate(&tPath, &customer, &templateBuff)
 	err = xml.EscapeText(&escapedQBXML, templateBuff.Bytes())

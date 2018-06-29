@@ -112,14 +112,18 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 				qbReceiptAdd.IsPending = "true"
 			}
 			qbReceiptAdd.FOB = CheckPath(fieldMap["FOB"], o)
+			qbReceiptAdd.CustomerMsgRef.FullName = CheckPath(fieldMap["CustomerMsgRef"], shipTo)
+			//qbReceiptAdd.CustomerMsgRef.ListID = CheckPath(fieldMap["CustomerMsgRef.ListID"], shipTo)
 			qbReceiptAdd.CustomerSalesTaxCodeRef.FullName = CheckPath(fieldMap["CustomerSalesTaxCodeRef.FullName"], o)
-			qbReceiptAdd.CustomerMsgRef.FullName = CheckPath(fieldMap["CustomerMsgRef.FullName"], shipTo)
 			qbReceiptAdd.CustomerSalesTaxCodeRef.ListID = CheckPath(fieldMap["CustomerSalesTaxCodeRef.ListID"], o)
 			qbReceiptAdd.ItemSalesTaxRef.FullName = CheckPath(fieldMap["ItemSalesTaxRef.FullName"], o)
 			qbReceiptAdd.ItemSalesTaxRef.ListID = CheckPath(fieldMap["ItemSalesTaxRef.ListID"], o)
 			qbReceiptAdd.DepositToAccountRef.FullName = CheckPath(fieldMap["DepositToAccountRef.FullName"], o)
 			qbReceiptAdd.DepositToAccountRef.ListID = CheckPath(fieldMap["DepositToAccountRef.ListID"], o)
-			qbReceiptAdd.SalesRepRef.FullName = CheckPath(fieldMap["SalesRepRef.FullName"], o)
+
+			//Direct mappingFor Beatrice Bakery "W"
+			qbReceiptAdd.SalesRepRef.FullName = fieldMap["SalesRepRef.FullName"] //CheckPath(fieldMap["SalesRepRef.FullName"], o)
+
 			qbReceiptAdd.SalesRepRef.ListID = CheckPath(fieldMap["SalesRepRef.ListID"], o)
 			qbReceiptAdd.TemplateRef.FullName = CheckPath(fieldMap["TemplateRef.FullName"], o)
 			qbReceiptAdd.TemplateRef.ListID = CheckPath(fieldMap["TemplateRef.ListID"], o)
@@ -166,12 +170,10 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			qbReceiptAdd.ShipMethodRef.FullName = CheckPath(fieldMap["ShipMethodRef.FullName"], shipTo)
 			qbReceiptAdd.ShipMethodRef.ListID = CheckPath(fieldMap["ShipMethodRef.ListID"], shipTo)
 			//hard code prefix for Beatrirce bakery
-			qbReceiptAdd.Memo = "WEB#" + CheckPath(fieldMap["Memo"], o)
+			qbReceiptAdd.Memo = "WEB# " + CheckPath(fieldMap["Memo"], o)
 			qbReceiptAdd.PaymentMethodRef.FullName = CheckPath(fieldMap["PaymentMethodRef.FullName"], o)
 			qbReceiptAdd.PaymentMethodRef.ListID = CheckPath(fieldMap["PaymentMethodRef.ListID"], o)
-			//TODO
-			//
-			//TODO
+
 			//If the billing name is not paypal, use it as the customers name
 			if !strings.Contains(strings.ToLower(CheckPath("billing.firstName", o)), "paypal") {
 				qbReceiptAdd.CustomerRef.FullName = CheckPath("billing.lastName", o) + ", " + CheckPath("billing.firstName", o)
@@ -268,15 +270,16 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 					//these variables must be set from the shipToProducts
 					tempInterface := AddReceiptItem("sku", temp, prod, skus, &WorkCTX{}, shipToProductFieldMap)
 					temp = tempInterface.(*SalesReceiptLineAdd)
+
 					//store attribute descriptions, so they can be matched later
 					attributes, err := prod.Path("attributes").ChildrenMap()
 					if err != nil {
-						Log.WithFields(logrus.Fields{"Error": err}).Error("Error macking product attribute children in SalesReceiptAdd")
-						ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error macking product attribute children in SalesReceiptAdd")
-					}
-					temp.Attributes = make(map[string]string, len(attributes))
-					for key, attribute := range attributes {
-						temp.Attributes[key] = attribute.Data().(string)
+						Log.WithFields(logrus.Fields{"Error": err}).Debug("Error making product attribute children in SalesReceiptAdd")
+					} else { //attributes found
+						temp.Attributes = make(map[string]string, len(attributes))
+						for key, attribute := range attributes {
+							temp.Attributes[key] = attribute.Data().(string)
+						}
 					}
 					//temp.Attributes =
 					skus[CheckPath("SKU", prod)] = temp
@@ -429,6 +432,9 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 				qbOrderAdd.IsToBePrinted = "true"
 			}
 			qbOrderAdd.FOB = CheckPath(fieldMap["FOB"], o)
+
+			qbOrderAdd.CustomerMsgRef.FullName = CheckPath(fieldMap["CustomerMsgRef"], shipTo)
+			qbOrderAdd.CustomerMsgRef.ListID = CheckPath(fieldMap["CustomerMsgRef.ListID"], shipTo)
 			qbOrderAdd.CustomerSalesTaxCodeRef.FullName = CheckPath(fieldMap["CustomerSalesTaxCodeRef.FullName"], o)
 			qbOrderAdd.CustomerSalesTaxCodeRef.ListID = CheckPath(fieldMap["CustomerSalesTaxCodeRef.ListID"], o)
 			qbOrderAdd.ItemSalesTaxRef.FullName = CheckPath(fieldMap["ItemSalesTaxRef.FullName"], o)
@@ -490,12 +496,11 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 			qbOrderAdd.ShipMethodRef.FullName = CheckPath(fieldMap["ShipMethodRef.FullName"], shipTo)
 			qbOrderAdd.ShipMethodRef.ListID = CheckPath(fieldMap["ShipMethodRef.ListID"], shipTo)
 			qbOrderAdd.Memo = CheckPath(fieldMap["Memo"], o)
-			//TODO
-			//
-			//TODO
+
 			//If the billing name is not paypal, use it as the customers name
 			if !strings.Contains(strings.ToLower(CheckPath("billing.firstName", o)), "paypal") {
-				qbOrderAdd.CustomerRef.FullName = CheckPath("billing.lastName", o) + ", " + CheckPath("billing.firstName", o)
+				//No Comma for Mac's Tie downs
+				qbOrderAdd.CustomerRef.FullName = CheckPath("billing.lastName", o) + " " + CheckPath("billing.firstName", o)
 			} else { //billing firstName is paypal, so just add paypal as a CustomerRef is required for a SalesOrderAdd
 				qbOrderAdd.CustomerRef.FullName = CheckPath("billing.firstName", o)
 			}
@@ -566,12 +571,12 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 					//store attribute descriptions, so they can be matched later
 					attributes, err := prod.Path("attributes").ChildrenMap()
 					if err != nil {
-						Log.WithFields(logrus.Fields{"Error": err}).Error("Error macking product attribute children in SalesOrderAdd")
-						ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error macking product attribute children in SalesOrderAdd")
-					}
-					temp.Attributes = make(map[string]string, len(attributes))
-					for key, attribute := range attributes {
-						temp.Attributes[key] = attribute.Data().(string)
+						Log.WithFields(logrus.Fields{"Error": err}).Debug("Error making product attribute children in SalesOrderAdd")
+					} else { //attributes found
+						temp.Attributes = make(map[string]string, len(attributes))
+						for key, attribute := range attributes {
+							temp.Attributes[key] = attribute.Data().(string)
+						}
 					}
 					skus[CheckPath("SKU", prod)] = temp
 				}

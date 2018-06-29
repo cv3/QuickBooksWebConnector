@@ -523,7 +523,7 @@ func (receipt *SalesReceiptAdd) BuildLineItems(item *gabs.Container, itemFieldMa
 								attrBuf.WriteString(" ")
 								attrBuf.WriteString(attribute)
 							}
-							prod.Desc = attrBuf.String()
+							prod.Desc = "" //attrBuf.String()
 							//Add the product data to the quickbooks response data.
 							receipt.SalesReceiptLineAdds = append(receipt.SalesReceiptLineAdds, *prod)
 						}
@@ -991,6 +991,7 @@ type Config struct {
 	QBWCVersion            string         `json:"qbwcVersion"`
 	CloseConnectionMessage string         `json:"closeConnectionMessage"`
 	MaxWorkAttempts        int            `json:"maxWorkAttempts"`
+	ConfirmOrders          bool           `json:"confirmOrders"`
 }
 
 //ItemUpdates is part of the config to keep track of item updates
@@ -1085,6 +1086,12 @@ type CustomerAddRq struct {
 	PriceLevelRef           AccountRef `xml:"PriceLevelRef"`
 	ExternalGUID            string     `xml:"ExternalGUID"`
 	CurrencyRef             AccountRef `xml:"CurrencyRef"`
+}
+
+//CustomerMsgAddRq is the struct to hold the information to add a customer message reference
+type CustomerMsgAddRq struct {
+	Name     string `xml:"Name"`
+	IsActive string `xml:"IsActive"`
 }
 
 //QBShipToAddress holds a quickbooks customer's shipTo addresses

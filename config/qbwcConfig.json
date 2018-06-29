@@ -24,5 +24,6 @@
 	"serverVersion": "",
 	"qbwcVersion": "",
 	"maxWorkAttempts":7,
+	"confirmOrders":true,
 	"closeConnectionMessage": "Completed"
 }
