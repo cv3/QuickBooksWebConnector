@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"encoding/xml"
-	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -437,7 +436,6 @@ func SendAuthenticateResponse(parentNode Node, w http.ResponseWriter) {
 func LoadTemplate(tPath *string, ctx interface{}, requestBody *bytes.Buffer) {
 	t, err := template.ParseFiles(*tPath)
 	if err != nil {
-		fmt.Println(err)
 		Log.WithFields(logrus.Fields{"error": err, "filepath": *tPath}).Error("Error parsing template file")
 		ErrLog.WithFields(logrus.Fields{"error": err, "filepath": *tPath}).Error("Error parsing template file")
 		getLastErrChan <- err.Error()
@@ -449,7 +447,6 @@ func LoadTemplate(tPath *string, ctx interface{}, requestBody *bytes.Buffer) {
 		ErrLog.WithFields(logrus.Fields{"error": err, "filepath": *tPath}).Error("Error executing template")
 		getLastErrChan <- err.Error()
 	}
-	//fmt.Println(requestBody.String())
 }
 
 //InitWork will go get work to be done
@@ -727,10 +724,17 @@ func SalesOrderAddRsHandler(parentNode Node, checkWork WorkCTX) {
 				"message":         salesOrderAddRs.StatusMessage,
 				"Status Code":     salesOrderAddRs.StatusCode,
 			}).Error("SalesOrderAddRs error 3140, items not in Quick Books")
-			switch salesOrderAddRs.StatusMessage[44:52] {
-			case "Customer":
+
+			//Check error message to see what feild had errors
+			switch { //check for CustomerMsg first to avoid a false positive with Customer
+			case strings.Contains(salesOrderAddRs.StatusMessage, "CustomerMsg"):
+				Log.Debug("CustomerMsg not found, attempting to add new customerMsg to Quickbooks")
+				go CustomerMsgAddQB(checkWork)
+				break
+			case strings.Contains(salesOrderAddRs.StatusMessage, "Customer"):
 				Log.Debug("Customer not found, attempting to add new customer to Quickbooks")
 				go CustomerAddQB(checkWork)
+				break
 			}
 			go func() {
 				confirmShipToChan <- ShipToSuccessTracker{
@@ -826,10 +830,17 @@ func SalesReceiptAddRsHandler(parentNode Node, checkWork WorkCTX) {
 				"message":         salesReceiptAddRs.StatusMessage,
 				"Status Code":     salesReceiptAddRs.StatusCode,
 			}).Error("SalesReceiptAddRs error 3140, Account Ref not in Quick Books")
-			switch salesReceiptAddRs.StatusMessage[44:52] {
-			case "Customer":
+
+			//Check error message to see what feild had errors
+			switch { //check for CustomerMsg first to avoid a false positive with Customer
+			case strings.Contains(salesReceiptAddRs.StatusMessage, "CustomerMsg"):
+				Log.Debug("CustomerMsg not found, attempting to add new customerMsg to Quickbooks")
+				go CustomerMsgAddQB(checkWork)
+				break
+			case strings.Contains(salesReceiptAddRs.StatusMessage, "Customer"):
 				Log.Debug("Customer not found, attempting to add new customer to Quickbooks")
 				go CustomerAddQB(checkWork)
+				break
 			}
 			go func() {
 				confirmShipToChan <- ShipToSuccessTracker{
