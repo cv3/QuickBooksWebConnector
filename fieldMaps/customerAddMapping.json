@@ -1,68 +1,406 @@
 {
-	"Name":"",
-	"IsActive":"",
-    "ClassRef.FullName":"",
-    "ClassRef.ListID":"",
-    "ParentRef.FullName":"",
-    "ParentRef.ListID":"",
-	"CompanyName":"",
-	"Salutation":"",
-	"FirstName":"billing.firstName",
-	"MiddleName":"",
-	"LastName":"billing.lastName",
-	"JobTitle":"",
-	"Phone":"billing.phone",
-	"AltPhone":"",
-	"Fax":"billing.fax",
-	"Email":"billing.email",
-	"Cc":"",
-	"Contact":"",
-	"AltContact":"",
-    "AdditionalContactRef.ContactName":"",
-    "AdditionalContactRef.ContactValue":"",
-    "Contacts.Salutation":"",
-    "Contacts.FirstName":"",
-    "Contacts.MiddleName":"",
-    "Contacts.LastName":"",
-    "Contacts.JobTitle":"",
-    "Contacts.AdditionalContactRef.ContactName":"",
-    "Contacts.AdditionalContactRef.ContactValue":"",
-    "CustomerTypeRef.FullName":"",
-    "CustomerTypeRef.ListID":"",
-    "TermsRef.FullName":"NET",
-    "TermsRef.ListID":"",
-    "SalesRepRef.FullName":"",
-    "SalesRepRef.ListID":"",
-	"OpenBalance":"",
-	"OpenBalanceDate":"",
-    "SalesTaxCodeRef.FullName":"",
-    "SalesTaxCodeRef.ListID":"",
-    "ItemSalesTaxRef.FullName":"",
-    "ItemSalesTaxRef.ListID":"",
-	"ResaleNumber":"",
-	"AccountNumber":"",
-	"CreditLimit":"",
-    "PreferredPaymentMethodRef.FullName":"creditcard",
-    "PreferredPaymentMethodRef.ListID":"",
-    "CreditCardInfo.CreditCardNumber":"",
-    "CreditCardInfo.ExpirationMonth":"",
-    "CreditCardInfo.ExpirationYear":"",
-    "CreditCardInfo.NameOnCard":"",
-    "CreditCardInfo.CreditCardAddress":"",
-    "CreditCardInfo.CreditCardPostalCode":"",
-	"JobStatus":"",
-	"JobStartDate":"",
-	"JobProjectedEndDate":"",
-	"JobEndDate":"",
-	"JobDesc":"",
-    "JobTypeRef.FullName":"",
-    "JobTypeRef.ListID":"",
-	"Notes":"",
-	"AdditionalNotes.Note":"",
-	"PreferredDeliveryMethod":"",
-    "PriceLevelRef.FullName":"RETAIL",
-    "PriceLevelRef.ListID":"",
-	"ExternalGUID":"",
-    "CurrencyRef.FullName":"",
-    "CurrencyRef.ListID":""
+	"AccountNumber": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"AdditionalContactRef.ContactName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"AdditionalContactRef.ContactValue": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"AdditionalNotes.Note": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"AltContact": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"AltPhone": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Cc": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ClassRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ClassRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"CompanyName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Contact": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Contacts.AdditionalContactRef.ContactName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Contacts.AdditionalContactRef.ContactValue": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Contacts.FirstName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Contacts.JobTitle": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Contacts.LastName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Contacts.MiddleName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Contacts.Salutation": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"CreditCardInfo.CreditCardAddress": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"CreditCardInfo.CreditCardNumber": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"CreditCardInfo.CreditCardPostalCode": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"CreditCardInfo.ExpirationMonth": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"CreditCardInfo.ExpirationYear": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"CreditCardInfo.NameOnCard": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"CreditLimit": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"CurrencyRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"CurrencyRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"CustomerTypeRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"CustomerTypeRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Email": [
+		{
+			"data": "billing.email",
+			"mappedField": true
+		}
+	],
+	"ExternalGUID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Fax": [
+		{
+			"data": "billing.fax",
+			"mappedField": true
+		}
+	],
+	"FirstName": [
+		{
+			"data": "billing.firstName",
+			"mappedField": true
+		}
+	],
+	"IsActive": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ItemSalesTaxRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ItemSalesTaxRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"JobDesc": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"JobEndDate": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"JobProjectedEndDate": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"JobStartDate": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"JobStatus": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"JobTitle": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"JobTypeRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"JobTypeRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"LastName": [
+		{
+			"data": "billing.lastName",
+			"mappedField": true
+		}
+	],
+	"MiddleName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Name": [
+		{
+			"data": "billing.firstName",
+			"mappedField": true
+		},
+		{
+			"data": " ",
+			"mappedField": false
+		},
+		{
+			"data": "billing.lastName",
+			"mappedField": true
+		}
+	],
+	"Notes": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"OpenBalance": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"OpenBalanceDate": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ParentRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ParentRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Phone": [
+		{
+			"data": "billing.phone",
+			"mappedField": true
+		}
+	],
+	"PreferredDeliveryMethod": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"PreferredPaymentMethodRef.FullName": [
+		{
+			"data": "creditcard",
+			"mappedField": false
+		}
+	],
+	"PreferredPaymentMethodRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"PriceLevelRef.FullName": [
+		{
+			"data": "RETAIL",
+			"mappedField": false
+		}
+	],
+	"PriceLevelRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ResaleNumber": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"SalesRepRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"SalesRepRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"SalesTaxCodeRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"SalesTaxCodeRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Salutation": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"TermsRef.FullName": [
+		{
+			"data": "NET",
+			"mappedField": false
+		}
+	],
+	"TermsRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	]
 }

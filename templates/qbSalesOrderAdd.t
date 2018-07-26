@@ -1,9 +1,5 @@
-{{define "qbSalesOrderAdd.t"}}<?xml version="1.0" encoding="utf-8"?>
-<?qbxml version="13.0"?>
-<QBXML>
-   <QBXMLMsgsRq onError="stopOnError">
-      <SalesOrderAddRq>
-         <SalesOrderAdd >{{if or .CustomerRef.FullName .CustomerRef.ListID}}
+{{define "qbSalesOrderAdd.t"}}      <SalesOrderAddRq >
+         <SalesOrderAdd {{if .DefMacro}}defMacro="{{.DefMacro}}"{{end}}>{{if or .CustomerRef.FullName .CustomerRef.ListID}}
             <CustomerRef>{{if .CustomerRef.ListID}}
                <ListID >{{.CustomerRef.ListID}}</ListID>{{end}}{{if .CustomerRef.FullName}}
                <FullName >{{.CustomerRef.FullName}}</FullName>{{end}}
@@ -142,6 +138,4 @@
                </DataExt>{{end}}{{end}}
             </SalesOrderLineGroupAdd>{{end}}{{end}}
          </SalesOrderAdd>{{/*<IncludeRetElement >STRTYPE</IncludeRetElement>*/}}
-      </SalesOrderAddRq>
-   </QBXMLMsgsRq>
-</QBXML>{{end}}
+      </SalesOrderAddRq>{{end}}

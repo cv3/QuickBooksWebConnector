@@ -1,0 +1,102 @@
+{
+    "ShipAddress.Addr1": [
+        {
+            "data": "firstName",
+            "mappedField": true
+        },
+        {
+            "data": " ",
+            "mappedField": false
+        },
+        {
+            "data": "lastName",
+            "mappedField": true
+        }
+    ],
+    "ShipAddress.Addr2": [
+        {
+            "data": "address1",
+            "mappedField": true
+        }
+    ],
+    "ShipAddress.Addr3": [
+        {
+            "data": "address2",
+            "mappedField": true
+        }
+    ],
+    "ShipAddress.City": [
+        {
+            "data": "city",
+            "mappedField": true
+        }
+    ],
+    "ShipAddress.State": [
+        {
+            "data": "state",
+            "mappedField": true
+        }
+    ],
+    "ShipAddress.PostalCode": [
+        {
+            "data": "zip",
+            "mappedField": true
+        }
+    ],
+    "ShipAddress.Country": [
+        {
+            "data": "country",
+            "mappedField": true
+        }
+    ],
+    "BillAddress.Addr1": [
+        {
+            "data": "billing.firstName",
+            "mappedField": true
+        },
+        {
+            "data": " ",
+            "mappedField": false
+        },
+        {
+            "data": "billing.lastName",
+            "mappedField": true
+        }
+    ],
+    "BillAddress.Addr2": [
+        {
+            "data": "billing.address1",
+            "mappedField": true
+        }
+    ],
+    "BillAddress.Addr3": [
+        {
+            "data": "billing.address2",
+            "mappedField": true
+        }
+    ],
+    "BillAddress.City": [
+        {
+            "data": "billing.city",
+            "mappedField": true
+        }
+    ],
+    "BillAddress.State": [
+        {
+            "data": "billing.state",
+            "mappedField": true
+        }
+    ],
+    "BillAddress.PostalCode": [
+        {
+            "data": "billing.zip",
+            "mappedField": true
+        }
+    ],
+    "BillAddress.Country": [
+        {
+            "data": "billing.country",
+            "mappedField": true
+        }
+    ]
+}

@@ -106,12 +106,12 @@ func ItemMapping(itemInterface interface{}, checkSKU *[]string, cv3Items *cv3go.
 	*checkSKU = append(*checkSKU, CheckPath("ListID", qbItem))
 	var itemTemp = cv3go.Product{}
 
-	itemTemp.Sku = CheckPath(fieldMap["SKU"], qbItem)
-	itemTemp.Name = CheckPath(fieldMap["Name"], qbItem)
+	itemTemp.Sku = fieldMap["SKU"].Display(qbItem)
+	itemTemp.Name = fieldMap["Name"].Display(qbItem)
 	//Check if this is an inventory item
 	if strings.Contains(mapPath, "itemInventory") {
-		itemTemp.InventoryControl.InventoryOnHand = CheckPath(fieldMap["InventoryControl.InventoryOnHand"], qbItem)
-		onOrder, err := strconv.ParseInt(CheckPath(fieldMap["InventoryControl.OnOrder"], qbItem), 0, 32)
+		itemTemp.InventoryControl.InventoryOnHand = fieldMap["InventoryControl.InventoryOnHand"].Display(qbItem)
+		onOrder, err := strconv.ParseInt(fieldMap["InventoryControl.OnOrder"].Display(qbItem), 0, 32)
 		if err != nil {
 			Log.WithFields(logrus.Fields{"error": err}).Error("Error parsing int for onOrder")
 			ErrLog.WithFields(logrus.Fields{"error": err}).Error("Error parsing int for onOrder")
@@ -131,8 +131,8 @@ func ItemMapping(itemInterface interface{}, checkSKU *[]string, cv3Items *cv3go.
 	if strings.ToUpper(CheckPath("IsActive", qbItem)) == "TRUE" {
 		itemTemp.Inactive = "false"
 	}
-	itemTemp.Description = CheckPath(fieldMap["Description"], qbItem)
-	itemTemp.Retail.Price.StandardPrice = CheckPath(fieldMap["Retail.Price.StandardPrice"], qbItem)
+	itemTemp.Description = fieldMap["Description"].Display(qbItem)
+	itemTemp.Retail.Price.StandardPrice = fieldMap["Retail.Price.StandardPrice"].Display(qbItem)
 	itemTemp.Retail.Price.PriceCategory = "Retail"
 	itemTemp.Retail.Active = "true"
 

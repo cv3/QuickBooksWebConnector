@@ -1,9 +1,5 @@
-{{define "qbReceiptAdd.t"}}<?xml version="1.0" encoding="utf-8"?>
-<?qbxml version="13.0"?>
-<QBXML>
-   <QBXMLMsgsRq onError="stopOnError">
-      <SalesReceiptAddRq>
-         <SalesReceiptAdd >{{if or .CustomerRef.ListID .CustomerRef.FullName}}
+{{define "qbReceiptAdd.t"}}<SalesReceiptAddRq>
+         <SalesReceiptAdd {{if .DefMacro}}defMacro="{{.DefMacro}}"{{end}}>{{if or .CustomerRef.ListID .CustomerRef.FullName}}
             <CustomerRef>{{if .CustomerRef.ListID}}
                <ListID >{{.CustomerRef.ListID}}</ListID>{{end}}{{if .CustomerRef.FullName}}
                <FullName >{{.CustomerRef.FullName}}</FullName>{{end}}
@@ -208,6 +204,4 @@
                </DataExt>{{end}}{{end}}
             </SalesReceiptLineGroupAdd>{{end}}{{end}}
          </SalesReceiptAdd>{{/*<IncludeRetElement >STRTYPE</IncludeRetElement>*/}}
-      </SalesReceiptAddRq>
-   </QBXMLMsgsRq>
-</QBXML>{{end}}
+      </SalesReceiptAddRq>{{end}}

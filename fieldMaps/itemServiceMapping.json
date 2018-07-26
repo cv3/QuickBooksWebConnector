@@ -1,22 +1,122 @@
 {
-	"Inactive":"IsActive",
-	"New":"",
-	"SKU":"ListID",
-	"ProdID":"",
-	"Name": "Name",
-	"URLName":"",
-	"InventoryControl.InventoryControlExempt":"",
-	"InventoryControl.InventoryStatus":"",
-	"InventoryControl.InventoryOnHand":"",
-	"InventoryControl.OnOrder":"",
-	"InventoryControl.InventoryBackorderedDate":"",
-	"InventoryControl.OutOfStock":"",
-	"Retail.Active":"",
-	"Retail.Price.StandardPrice":"SalesOrPurchase.Price",
-	"WholeSale.Active":"",
-	"WholeSale.StandardPrice":"",
-	"WholeSale.Qty":"",
-	"Description":"SalesOrPurchase.Desc",
-	"DefaultCategory":"",
-	"Rating":""
+	"DefaultCategory": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Description": [
+		{
+			"data": "SalesOrPurchase.Desc",
+			"mappedField": true
+		}
+	],
+	"Inactive": [
+		{
+			"data": "IsActive",
+			"mappedField": true
+		}
+	],
+	"InventoryControl.InventoryBackorderedDate": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"InventoryControl.InventoryControlExempt": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"InventoryControl.InventoryOnHand": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"InventoryControl.InventoryStatus": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"InventoryControl.OnOrder": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"InventoryControl.OutOfStock": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Name": [
+		{
+			"data": "Name",
+			"mappedField": true
+		}
+	],
+	"New": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ProdID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Rating": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Retail.Active": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Retail.Price.StandardPrice": [
+		{
+			"data": "SalesOrPurchase.Price",
+			"mappedField": true
+		}
+	],
+	"SKU": [
+		{
+			"data": "ListID",
+			"mappedField": true
+		}
+	],
+	"URLName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"WholeSale.Active": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"WholeSale.Qty": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"WholeSale.StandardPrice": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	]
 }
