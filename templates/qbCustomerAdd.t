@@ -89,7 +89,7 @@
                     </TermsRef>{{end}}{{if or .SalesRepRef.FullName .SalesRepRef.ListID}}
                     <SalesRepRef>{{if .SalesRepRef.ListID}}
                         <ListID>{{.SalesRepRef.ListID}}</ListID>{{end}}{{if .SalesRepRef.FullName}}
-                        <FullName>{{.SalesRepREf.FullName}}</FullName>{{end}}
+                        <FullName>{{.SalesRepRef.FullName}}</FullName>{{end}}
                     </SalesRepRef>{{end}}{{if .OpenBalance}}
                     <OpenBalance>{{.OpenBalance}}</OpenBalance>{{end}}{{if .OpenBalanceDate}}
                     <OpenBalanceDate>{{.OpenBalanceDate}}</OpenBalanceDate>{{end}}{{if or .SalesTaxCodeRef.FullName .SalesTaxCodeRef.ListID}}

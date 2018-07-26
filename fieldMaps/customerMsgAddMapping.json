@@ -1,4 +1,14 @@
 {
-    "Name":"message",
-    "IsActive":""
+	"IsActive": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Name": [
+		{
+			"data": "message",
+			"mappedField": true
+		}
+	]
 }

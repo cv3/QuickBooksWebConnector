@@ -9,14 +9,56 @@ import (
 	"github.com/amazingfly/cv3go"
 )
 
+//MappingObject is the struct to hold all the information for a single field mapping
+type MappingObject []MapData
+
+//MapData is one piece of a mapping object
+type MapData struct {
+	Data        string `json:"data"`        //the cv3 field name or the data to be hardcoded
+	MappedField bool   `json:"mappedField"` //indicates whether or not the data field is a hardcoded value or a cv3 field name
+}
+
+//Display will display the data in the MappingObject in its desired format
+func (mapObj MappingObject) Display(cv3Data ...*gabs.Container) string {
+	var displayBuf = bytes.Buffer{}
+
+	for _, mData := range mapObj {
+		if mData.MappedField {
+			for _, cData := range cv3Data {
+				if CheckPath(mData.Data, cData) != "" {
+					displayBuf.WriteString(CheckPath(mData.Data, cData))
+					continue
+				}
+			}
+		} else { //hardcoded value
+			displayBuf.WriteString(mData.Data)
+		}
+	}
+	return displayBuf.String()
+}
+
+//QBXMLWork is the slice of finished templates to be added to the top level template
+type QBXMLWork []string
+
+//AppendWork checks if this is the first piece of work, as every piece of work after the first should have an extra newline character
+func (qbxmlWork *QBXMLWork) AppendWork(w string) {
+	if len(*qbxmlWork) > 0 {
+		*qbxmlWork = append(*qbxmlWork, "\n")
+	}
+	*qbxmlWork = append(*qbxmlWork, w)
+}
+
 //WorkCTX is a struct that will hold both the work to be done, and the data used to create it
 type WorkCTX struct {
-	Attempted   int             //keeps track of how many times this work was attempted
-	Work        string          //holds the excaped qbxml
+	Attempted int    //keeps track of how many times this work was attempted
+	Work      string //holds the excaped qbxml
+	DataExts  []DataExtAddRq
+	//TODO refactor Data to not be confused with DataExt
 	Data        interface{}     //holds the struct that created the qbxml
 	Order       *gabs.Container //holds the origional order information
 	CV3Products []cv3go.Product //holds the cv3 products used to make the qbxml
 	Type        string          //type of qbxml request
+	NoCustomer  bool            //set to true if there are problems with adding a customer name
 }
 
 //ItemGroupLine is a piece of the ItemGroupRet
@@ -486,7 +528,7 @@ type SalesReceiptLineGroupAdd struct {
 }
 
 // BuildLineItems will take a *gabs.Container of CV3 items, itemFieldMap, skus a map of items to check, and mMap a map for keeping track of the used skus
-func (receipt *SalesReceiptAdd) BuildLineItems(item *gabs.Container, itemFieldMap map[string]string, skus map[string]interface{}, workCTX *WorkCTX) { //*SalesReceiptAdd {
+func (receipt *SalesReceiptAdd) BuildLineItems(item *gabs.Container, itemFieldMap map[string]MappingObject, skus map[string]interface{}, workCTX *WorkCTX) { //*SalesReceiptAdd {
 	var prod *SalesReceiptLineAdd
 	var sku string
 	//Check if this is an attribute product
@@ -589,6 +631,7 @@ func MatchAttributeCombinations(at *gabs.Container, pAttributes map[string]strin
 
 //SalesReceiptAdd is the struct for added sales receipts from cv3 to qb
 type SalesReceiptAdd struct {
+	DefMacro                string            `xml:"defmacro,attr"`
 	CV3OrderID              string            //to keep track of order success
 	ShipToIndex             int               //to keep track of orders with multiple shiptos
 	CustomerRef             AccountRef        `xml:"CustomerRef,omitempty"`
@@ -631,7 +674,7 @@ type OrderOrReceiptAdd interface {
 }
 
 // BuildLineItems will take a *gabs.Container of CV3 items, itemFieldMap, skus a map of items, checks for sub or attribute products and adds them to the SalesOrderAdd object
-func (order *SalesOrderAdd) BuildLineItems(item *gabs.Container, itemFieldMap map[string]string, skus map[string]interface{}, workCTX *WorkCTX) { //*SalesOrderAdd {
+func (order *SalesOrderAdd) BuildLineItems(item *gabs.Container, itemFieldMap map[string]MappingObject, skus map[string]interface{}, workCTX *WorkCTX) { //*SalesOrderAdd {
 	var prod *SalesOrderLineAdd
 	var sku string
 	//Check if this is an attribute product
@@ -663,12 +706,7 @@ func (order *SalesOrderAdd) BuildLineItems(item *gabs.Container, itemFieldMap ma
 						if prodInterface != nil {
 							prod = prodInterface.(*SalesOrderLineAdd)
 							//append the attributes to the description
-							var attrBuf = bytes.NewBufferString(prod.Desc)
-							for _, attribute := range p.Attributes {
-								attrBuf.WriteString(" ")
-								attrBuf.WriteString(attribute)
-							}
-							prod.Desc = attrBuf.String()
+
 							//Add the product data to the quickbooks response data.
 							order.SalesOrderLineAdds = append(order.SalesOrderLineAdds, *prod)
 						}
@@ -711,6 +749,7 @@ func (order *SalesOrderAdd) BuildLineItems(item *gabs.Container, itemFieldMap ma
 
 //SalesOrderAdd is the struct to hold the variables for the qbxml call
 type SalesOrderAdd struct {
+	DefMacro                string `xml:"defmacro,attr"`
 	CV3OrderID              string //to keep track of order success
 	ShipToIndex             int
 	CustomerRef             AccountRef               `xml:"CustomerRef"`
@@ -992,6 +1031,12 @@ type Config struct {
 	CloseConnectionMessage string         `json:"closeConnectionMessage"`
 	MaxWorkAttempts        int            `json:"maxWorkAttempts"`
 	ConfirmOrders          bool           `json:"confirmOrders"`
+	DataExtActive          bool           `json:"dataExtActive"`
+	NameArrangement        struct {
+		First           string `json:"first"`
+		SeperatorString string `json:"seperatorString"`
+		Last            string `json:"last"`
+	} `json:"nameArrangement"`
 }
 
 //ItemUpdates is part of the config to keep track of item updates
@@ -1088,6 +1133,11 @@ type CustomerAddRq struct {
 	CurrencyRef             AccountRef `xml:"CurrencyRef"`
 }
 
+//CustomerAddRs hods the data from the response to CustomerAddRq
+type CustomerAddRs struct {
+	ResponseStatus
+}
+
 //CustomerMsgAddRq is the struct to hold the information to add a customer message reference
 type CustomerMsgAddRq struct {
 	Name     string `xml:"Name"`
@@ -1125,4 +1175,22 @@ type CreditCardInfo struct {
 	NameOnCard           string `xml:"NameOnCard"`
 	CreditCardAddress    string `xml:"CreditCardAddress"`
 	CreditCardPostalCode string `xml:"CreditCardPostalCode"`
+}
+
+//DataExtAddRq is the sruct to add custom data fields to a quick books object
+type DataExtAddRq struct {
+	OwnerID     string `xml:"OwnerID"`
+	DataExtName string `xml:"DataExtName"`
+	//<!-- BEGIN OR -->
+	ListDataExtType string     `xml:"ListDataExtType"` //may have one of the following values: Account, Customer, Employee, Item, OtherName, Vendor
+	ListObjRef      AccountRef `xml:"ListObjRef"`
+	//<!-- OR -->
+	TxnDataExtType string `xml:"TxnDataExtType"` //may have one of the following values: ARRefundCreditCard, Bill, BillPaymentCheck, BillPaymentCreditCard, BuildAssembly, Charge, Check, CreditCardCharge, CreditCardCredit, CreditMemo, Deposit, Estimate, InventoryAdjustment, Invoice, ItemReceipt, JournalEntry, PurchaseOrder, ReceivePayment, SalesOrder, SalesReceipt, SalesTaxPaymentCheck, VendorCredit -->
+	TxnID          string `xml:"TxnID"`
+	UseMacro       string `xml:"UserMacro,attr"`
+	TxnLineID      string `xml:"TxnLineID"`
+	//<!-- OR -->
+	OtherDataExtType string `xml:"OtherDataExtType"` //may have one of the following values: Company -->
+	//<!-- END OR -->
+	DataExtValue string `xml:"DataExtValue"`
 }

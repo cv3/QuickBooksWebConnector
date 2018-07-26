@@ -1,32 +1,194 @@
 {
-	"CustomerRef.FullName":"name",
-	"CustomerRef.ListID":"",
-	"ClassRef.FullName":"",
-	"ClassRef.ListID":"",
-	"TemplateRef.FullName":"",
-	"TemplateRef.ListID":"",
-	"TxnDate":"dateOrdered",
-    "RefNumber":"",
-    "IsPending":"",
-    "CheckNumber":"",
-	"PaymentMethodRef.FullName":"",
-	"PaymentMethodRef.ListID":"",
-	"DueDate":"",
-	"SalesRepRef.FullName":"",
-	"SalesRepRef.ListID":"",
-	"ShipDate":"shipOn",
-	"ShipMethodRef.FullName":"",
-	"ShipMethodRef.ListID":"",
-	"FOB":"",
-	"ItemSalesTaxRef.FullName":"",
-	"ItemSalesTaxRef.ListID":"",
-	"Memo":"orderID",
-	"CustomerMsgRef":"message",
-	"IsToBePrinted":"",
-	"IsToBeEmailed":"",
-    "CustomerSalesTaxCodeRef":"",
-    "DepositToAccountRef":"",
-	"Other":"additionalPayMethodTxn",
-	"ExchangeRate":"",
-	"ExternalGUID":""
+	"CheckNumber": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ClassRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ClassRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"CustomerMsgRef": [
+		{
+			"data": "message",
+			"mappedField": true
+		}
+	],
+	"CustomerRef.FullName": [
+		{
+			"data": "billing.firstName",
+			"mappedField": true
+		},
+		{
+			"data": " ",
+			"mappedField": false
+		},
+		{
+			"data": "billing.lastName",
+			"mappedField": true
+		}
+	],
+	"CustomerRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"CustomerSalesTaxCodeRef": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"DepositToAccountRef": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"DueDate": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ExchangeRate": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ExternalGUID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"FOB": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"IsPending": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"IsToBeEmailed": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"IsToBePrinted": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ItemSalesTaxRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ItemSalesTaxRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Memo": [
+		{
+			"data": "WEB# ",
+			"mappedField": false
+		},
+		{
+			"data": "orderID",
+			"mappedField": true
+		}
+	],
+	"Other": [
+		{
+			"data": "additionalPayMethodTxn",
+			"mappedField": true
+		}
+	],
+	"PaymentMethodRef.FullName": [
+		{
+			"data": "payMethod",
+			"mappedField": true
+		}
+	],
+	"PaymentMethodRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"RefNumber": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"SalesRepRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"SalesRepRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ShipDate": [
+		{
+			"data": "shipOn",
+			"mappedField": true
+		}
+	],
+	"ShipMethodRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ShipMethodRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"TemplateRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"TemplateRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"TxnDate": [
+		{
+			"data": "dateOrdered",
+			"mappedField": true
+		}
+	]
 }

@@ -9,6 +9,7 @@ import (
 
 //CustomerMsgAddQB will add a customerMsgRef to the quickbooks database
 func CustomerMsgAddQB(workCTX WorkCTX) {
+	//insertWG.Add(1)
 	var err error
 	var escapedQBXML = bytes.Buffer{}
 	var templateBuff = bytes.Buffer{}
@@ -18,10 +19,70 @@ func CustomerMsgAddQB(workCTX WorkCTX) {
 
 	switch workCTX.Data.(type) {
 	case SalesReceiptAdd:
-		customerMsg.Name = workCTX.Data.(SalesReceiptAdd).CustomerMsgRef.FullName
+		var tempReceiptAdd = workCTX.Data.(SalesReceiptAdd)
+		customerMsg.Name = tempReceiptAdd.CustomerMsgRef.FullName
+
+		tempReceiptAdd.DefMacro = tempReceiptAdd.DefMacro + "_M"
+		workCTX.Data = tempReceiptAdd
+
+		var templateBuff = bytes.Buffer{}
+		var escapedQBXML = bytes.Buffer{}
+		var tPath = `./templates/qbReceiptAdd.t`
+		var qbxmlWork = make([]string, 0)
+
+		LoadTemplate(&tPath, tempReceiptAdd, &templateBuff)
+		//Add the SalesReceiptQBXML to th slice for use in QBXMLMsgsRq, the top level template
+		qbxmlWork = append(qbxmlWork, templateBuff.String())
+
+		//Prepare the DataExtAdds //TODO make universal rith now its only for macsTieDowns
+		var dExts = DataExtAddQB(tempReceiptAdd.DefMacro)
+		qbxmlWork = append(qbxmlWork, dExts)
+
+		//Reset the template buffer, and build and execute the toplevel QBXML template with the preceeding templates as data
+		templateBuff.Reset()
+		tPath = "./templates/QBXMLMsgsRq.t"
+		LoadTemplate(&tPath, qbxmlWork, &templateBuff)
+		err = xml.EscapeText(&escapedQBXML, templateBuff.Bytes())
+		if err != nil {
+			Log.WithFields(logrus.Fields{"error": err}).Error("Error Escaping template xml in CustomerAddQB")
+			ErrLog.WithFields(logrus.Fields{"error": err}).Error("Error Escaping template xml in CustomerAddQB")
+		}
+		//add the QBXML to the work slice
+		workCTX.Work = escapedQBXML.String()
+		break
+
 		//customerMsg.IsActive =
 	case SalesOrderAdd:
-		customerMsg.Name = workCTX.Data.(SalesOrderAdd).CustomerMsgRef.FullName
+		var tempOrderAdd = workCTX.Data.(SalesOrderAdd)
+		customerMsg.Name = tempOrderAdd.CustomerMsgRef.FullName
+
+		tempOrderAdd.DefMacro = tempOrderAdd.DefMacro + "_M"
+		workCTX.Data = tempOrderAdd
+
+		var templateBuff = bytes.Buffer{}
+		var escapedQBXML = bytes.Buffer{}
+		var tPath = `./templates/qbOrderAdd.t`
+		var qbxmlWork = make([]string, 0)
+
+		LoadTemplate(&tPath, tempOrderAdd, &templateBuff)
+		//Add the SalesOrderQBXML to th slice for use in QBXMLMsgsRq, the top level template
+		qbxmlWork = append(qbxmlWork, templateBuff.String())
+
+		//Prepare the DataExtAdds //TODO make universal rith now its only for macsTieDowns
+		var dExts = DataExtAddQB(tempOrderAdd.DefMacro)
+		qbxmlWork = append(qbxmlWork, dExts)
+
+		//Reset the template buffer, and build and execute the toplevel QBXML template with the preceeding templates as data
+		templateBuff.Reset()
+		tPath = "./templates/QBXMLMsgsRq.t"
+		LoadTemplate(&tPath, qbxmlWork, &templateBuff)
+		err = xml.EscapeText(&escapedQBXML, templateBuff.Bytes())
+		if err != nil {
+			Log.WithFields(logrus.Fields{"error": err}).Error("Error Escaping template xml in CustomerAddQB")
+			ErrLog.WithFields(logrus.Fields{"error": err}).Error("Error Escaping template xml in CustomerAddQB")
+		}
+		//add the QBXML to the work slice
+		workCTX.Work = escapedQBXML.String()
 		//customerMsg.IsActive =
 	}
 
@@ -32,7 +93,6 @@ func CustomerMsgAddQB(workCTX WorkCTX) {
 	}
 	//Send prepaired QBXML to the workInsertChan
 	workInsertChan <- WorkCTX{Work: escapedQBXML.String(), Data: workCTX.Data, Order: workCTX.Order, Type: "customerAddRq"}
-	// TODO it seems that the workChan picks up before the workInsertChan,  Perhaps a better way can be found
-	//time.Sleep(10)
-	workChan <- workCTX
+	//insertWG.Done()
+	workInsertChan <- workCTX
 }

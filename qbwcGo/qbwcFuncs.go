@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/TeamFairmont/gabs"
 	"github.com/amazingfly/cv3go"
 )
 
@@ -25,9 +27,10 @@ var Log *logrus.Logger
 
 //ErrLog is specifically for logging error level events
 var ErrLog *logrus.Logger
-var globalSession = SessionCTX{}                 //holds session data
-var workChan = make(chan WorkCTX, 5)             //channel for work to be sent on
-var workInsertChan = make(chan WorkCTX, 5)       //channel for work to be inserted in the front of the line
+var globalSession = SessionCTX{}           //holds session data
+var workChan = make(chan WorkCTX, 5)       //channel for work to be sent on
+var workInsertChan = make(chan WorkCTX, 5) //channel for work to be inserted in the front of the line
+//var insertWG = new(sync.WaitGroup)
 var checkWorckChan = make(chan WorkCTX, 5)       //channel used in SendReceiveResponseXML, will hold the workCTX that has just been done.
 var checkWorckInsertChan = make(chan WorkCTX, 5) //same as checkWorkChan, but for use when using workInsertChan
 var doneChan = make(chan bool)                   //signals sent from CloseConnection so the order tracking go routine, it is done.
@@ -163,6 +166,9 @@ func SendReceiveResponseXMLResponse(parentNode Node, w http.ResponseWriter) {
 			case "ItemQueryRs":
 				ItemQueryRsHandler(parentNode, checkWork)
 				return false //end recursive CheckNode
+			case "CustomerAddRs":
+				CustomerAddRsHandler(parentNode, checkWork)
+				return false
 			} //end main switch
 			return true //continue recursive checkNode
 		}) //end check node
@@ -202,6 +208,8 @@ func SendSendRequestXMLResponse(parentNode Node, w http.ResponseWriter) {
 		getLastErrChan <- err.Error()
 	} else { //no error unmarshaling xml
 		var work = WorkCTX{}
+		//if an insert job is still in progress, wait until it finishes.
+		//insertWG.Wait()
 		select {
 		//check the workInsert channel first
 		case work, ok := <-workInsertChan:
@@ -733,7 +741,12 @@ func SalesOrderAddRsHandler(parentNode Node, checkWork WorkCTX) {
 				break
 			case strings.Contains(salesOrderAddRs.StatusMessage, "Customer"):
 				Log.Debug("Customer not found, attempting to add new customer to Quickbooks")
-				go CustomerAddQB(checkWork)
+				if cfg.MaxWorkAttempts-checkWork.Attempted > 0 {
+					go CustomerAddQB(checkWork)
+				} else {
+					Log.WithFields(logrus.Fields{"OrderID": CheckPath("orderID", checkWork.Order)}).Error("Maximum number of attempts to add this salesReceipt has been exceeded")
+					ErrLog.WithFields(logrus.Fields{"OrderID": CheckPath("orderID", checkWork.Order)}).Error("Maximum number of attempts to add this salesReceipt has been exceeded")
+				}
 				break
 			}
 			go func() {
@@ -746,6 +759,19 @@ func SalesOrderAddRsHandler(parentNode Node, checkWork WorkCTX) {
 				}
 			}() //if set to true in the config, this will automatically import order items from an order that fails to import to QuickBooks because the items do not exist in quick books
 			go AutoImportItemsToQB(checkWork)
+			break
+		case "3180": //occurs when quickbooks thinks the list is being accessed from another location, may only happen in Enterprise version.  The solution is to simply resent the call
+			Log.WithFields(logrus.Fields{
+				"Status Severity": salesOrderAddRs.StatusSeverity,
+				"message":         salesOrderAddRs.StatusMessage,
+				"Status Code":     salesOrderAddRs.StatusCode,
+			}).Error("Error in SalesOrderAddRs, Resending")
+			ErrLog.WithFields(logrus.Fields{
+				"Status Severity": salesOrderAddRs.StatusSeverity,
+				"message":         salesOrderAddRs.StatusMessage,
+				"Status Code":     salesOrderAddRs.StatusCode,
+			}).Error("Error in SalesOrderAddRs, Resending")
+			workChan <- checkWork
 			break
 		case "3270": //occurs when using SalesOrderAdds with a quick books version that does not support it
 			Log.WithFields(logrus.Fields{
@@ -839,7 +865,12 @@ func SalesReceiptAddRsHandler(parentNode Node, checkWork WorkCTX) {
 				break
 			case strings.Contains(salesReceiptAddRs.StatusMessage, "Customer"):
 				Log.Debug("Customer not found, attempting to add new customer to Quickbooks")
-				go CustomerAddQB(checkWork)
+				if cfg.MaxWorkAttempts-checkWork.Attempted > 0 {
+					go CustomerAddQB(checkWork)
+				} else {
+					Log.WithFields(logrus.Fields{"OrderID": CheckPath("orderID", checkWork.Order)}).Error("Maximum number of attempts to add this salesReceipt has been exceeded")
+					ErrLog.WithFields(logrus.Fields{"OrderID": CheckPath("orderID", checkWork.Order)}).Error("Maximum number of attempts to add this salesReceipt has been exceeded")
+				}
 				break
 			}
 			go func() {
@@ -852,6 +883,19 @@ func SalesReceiptAddRsHandler(parentNode Node, checkWork WorkCTX) {
 				}
 			}() //if set to true in the config, this will automatically import order items from an order that fails to import to QuickBooks because the items do not exist in quick books
 			go AutoImportItemsToQB(checkWork)
+			break
+		case "3180": //occurs when quickbooks thinks the list is being accessed from another location, may only happen in Enterprise version.  The solution is to simply resent the call
+			Log.WithFields(logrus.Fields{
+				"Status Severity": salesReceiptAddRs.StatusSeverity,
+				"message":         salesReceiptAddRs.StatusMessage,
+				"Status Code":     salesReceiptAddRs.StatusCode,
+			}).Error("Error in SalesReceiptAddRs, Resending")
+			ErrLog.WithFields(logrus.Fields{
+				"Status Severity": salesReceiptAddRs.StatusSeverity,
+				"message":         salesReceiptAddRs.StatusMessage,
+				"Status Code":     salesReceiptAddRs.StatusCode,
+			}).Error("Error in SalesReceiptAddRs, Resending")
+			workChan <- checkWork
 			break
 		default:
 			Log.WithFields(logrus.Fields{
@@ -948,6 +992,83 @@ func ItemGroupAddRsHandler(parentNode Node, checkWork WorkCTX) {
 				"message":         itemGroupAddRs.StatusMessage,
 				"Status Code":     itemGroupAddRs.StatusCode,
 			}).Error("itemGroupAddRs in")
+		}
+	}
+}
+
+//CustomerAddRsHandler will handle the response from a CustomerAddRq
+func CustomerAddRsHandler(parentNode Node, checkWork WorkCTX) {
+	var customerAddRs = CustomerAddRs{}
+	//Unmarshal the CustomerAddRs xml into the proper struct
+	err := xml.Unmarshal(parentNode.Content, &customerAddRs)
+	if err != nil {
+		Log.WithFields(logrus.Fields{"error": err}).Error("Error unmarshalling CustomerAddRs")
+		ErrLog.WithFields(logrus.Fields{"error": err}).Error("Error unmarshalling CustomerAddRs")
+		getLastErrChan <- err.Error()
+	} else {
+		//send items to CV3
+		switch customerAddRs.StatusCode {
+		case "0":
+			Log.WithFields(logrus.Fields{
+				"Status Severity": customerAddRs.StatusSeverity,
+				"message":         customerAddRs.StatusMessage,
+				"Status Code":     customerAddRs.StatusCode,
+			}).Info("customerAddRs in")
+			break
+		case "3100":
+			Log.WithFields(logrus.Fields{
+				"Status Severity": customerAddRs.StatusSeverity,
+				"message":         customerAddRs.StatusMessage,
+				"Status Code":     customerAddRs.StatusCode,
+			}).Info("customerAddRs in")
+			//Check the message to see how to handle this error
+			if checkWork.Attempted <= 2 {
+				switch {
+				//Customer already exists as a employee or vendor. Add "Cust" to the end of their name.
+				case customerAddRs.StatusMessage[len(customerAddRs.StatusMessage)-39:] == " of the list element is already in use.":
+					Log.WithFields(logrus.Fields{"OrderID": CheckPath("orderID", checkWork.Order), "CustomerName": BuildName(CheckPath("billing.firstName", checkWork.Order), CheckPath("billing.lastName", checkWork.Order))}).Info("Attempting to add a customer that already exists as a vendor or employee is not allowed")
+					//Throw out the old order so this does not repeat
+					<-workInsertChan
+					var order = gabs.New()
+					var workCTX = WorkCTX{Attempted: checkWork.Attempted}
+					var workCount = 0
+					//Check the data int the config nameArrangement's last field
+					switch { //lowercase and check for the existance of first or last to allow for user error
+					case strings.Contains(strings.ToLower(cfg.NameArrangement.Last), "first"):
+						checkWork.Order.SetP(CheckPath("billing.firstName", checkWork.Order)+"Cust", "billing.firstName")
+						break
+					case strings.Contains(strings.ToLower(cfg.NameArrangement.Last), "last"):
+						checkWork.Order.SetP(CheckPath("billing.lastName", checkWork.Order)+"Cust", "billing.lastName")
+						break
+					}
+					//Put order info inside a gabs object to be compatible with the MakeOrder or MakeReceipt functions
+					order.Set(checkWork.Order.Data(), "0")
+					if err != nil {
+						fmt.Println(err)
+					}
+					//Create new orders or receipts with the altered name
+					switch strings.ToLower(cfg.OrderType) {
+					case "salesreceipt":
+						MakeSalesReceipt(&workCount, &workCTX, order)
+						break
+					case "salesorder":
+						MakeSalesOrder(&workCount, &workCTX, order)
+						break
+					}
+				}
+				break
+			}
+		default:
+			Log.WithFields(logrus.Fields{
+				"Status Severity": customerAddRs.StatusSeverity,
+				"message":         customerAddRs.StatusMessage,
+				"Status Code":     customerAddRs.StatusCode,
+			}).Error("Error in customerAddRs")
+			ErrLog.WithFields(logrus.Fields{
+				"Status Severity": customerAddRs.StatusSeverity,
+				"message":         customerAddRs.StatusMessage,
+				"Status Code":     customerAddRs.StatusCode,
+			}).Error("Error in customerAddRs")
 		}
 	}
 }

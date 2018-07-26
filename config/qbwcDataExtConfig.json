@@ -1,0 +1,11 @@
+[
+    {
+        "TxnDataExtType": "SalesOrder",
+        "DataExtName": "Source",
+        "DataExtValue": "eCommerce"
+    },{
+        "TxnDataExtType": "SalesOrder",
+        "DataExtName": "Package",
+        "DataExtValue": "No"
+    }
+]

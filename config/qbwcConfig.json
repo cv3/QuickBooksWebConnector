@@ -18,12 +18,18 @@
 		"serviceID": "cv3_webservice_id"
 	},
 	"qbwcCredentials": {
-		"user": "qbwc_username",
-		"pass": "qbwc_password"
+		"user": "user",
+		"pass": "pass"
+	},
+	"nameArrangement":{
+		"first":"firstName",
+		"seperatorString":" ",
+		"last":"lastName"
 	},
 	"serverVersion": "",
 	"qbwcVersion": "",
 	"maxWorkAttempts":7,
-	"confirmOrders":true,
+	"confirmOrders":false,
+	"dataExtActive":false,
 	"closeConnectionMessage": "Completed"
 }

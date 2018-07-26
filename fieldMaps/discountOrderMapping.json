@@ -1,0 +1,146 @@
+{
+	"Amount": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ClassRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ClassRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Desc": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"InventorySiteLocationRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"InventorySiteLocationRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"InventorySiteRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"InventorySiteRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"IsManuallyClosed": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ItemRef.FullName": [
+		{
+			"data": "Order Discount",
+			"mappedField": false
+		}
+	],
+	"ItemRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"LotNumber": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"OptionForPriceRuleConflict": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Other1": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Other2": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"PriceLevelRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"PriceLevelRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Quantity": [
+		{
+			"data": "1",
+			"mappedField": false
+		}
+	],
+	"Rate": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"RatePercent": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"SalesTaxCodeRef.FullName": [
+		{
+			"data": "Non",
+			"mappedField": false
+		}
+	],
+	"SalesTaxCodeRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"SerialNumber": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"UnitOfMeasure": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	]
+}

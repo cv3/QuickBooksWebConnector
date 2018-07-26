@@ -1,26 +1,146 @@
 {
-    "ItemRef.FullName":"Shipping",
-    "ItemRef.ListID":"",
-	"Desc":"shipMethodCode",
-	"Quantity":"1",
-	"UnitOfMeasure":"",
-	"Rate":"",
-	"RatePercent":"",
-    "PriceLevelRef.FullName":"",
-    "PriceLevelRef.ListID":"",
-    "ClassRef.FullName":"",
-    "ClassRef.ListID":"",
-	"Amount":"shipping",
-	"OptionForPriceRuleConflict":"",
-    "InventorySiteRef.FullName":"",
-    "InventorySiteRef.ListID":"",
-    "InventorySiteLocationRef.FullName":"",
-    "InventorySiteLocationRef.ListID":"",
-    "SerialNumber":"",
-	"LotNumber":"",
-    "SalesTaxCodeRef.FullName":"",
-    "SalesTaxCodeRef.ListID":"",
-    "IsManuallyClosed":"",
-    "Other1":"",
-	"Other2":"shipOn"
+	"Amount": [
+		{
+			"data": "shipping",
+			"mappedField": true
+		}
+	],
+	"ClassRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ClassRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Desc": [
+		{
+			"data": "shipMethodCode",
+			"mappedField": true
+		}
+	],
+	"InventorySiteLocationRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"InventorySiteLocationRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"InventorySiteRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"InventorySiteRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"IsManuallyClosed": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"ItemRef.FullName": [
+		{
+			"data": "Shipping",
+			"mappedField": false
+		}
+	],
+	"ItemRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"LotNumber": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"OptionForPriceRuleConflict": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Other1": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Other2": [
+		{
+			"data": "shipOn",
+			"mappedField": true
+		}
+	],
+	"PriceLevelRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"PriceLevelRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Quantity": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"Rate": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"RatePercent": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"SalesTaxCodeRef.FullName": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"SalesTaxCodeRef.ListID": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"SerialNumber": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	],
+	"UnitOfMeasure": [
+		{
+			"data": "",
+			"mappedField": true
+		}
+	]
 }
