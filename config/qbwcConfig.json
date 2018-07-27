@@ -22,7 +22,7 @@
 		"pass": "qbwc_password"
 
 	},
-	"serverVersion": "",
+	"serverVersion": "1.1.0",
 	"qbwcVersion": "",
 	"maxWorkAttempts":7,
 	"confirmOrders":false,
