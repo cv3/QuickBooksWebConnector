@@ -9,7 +9,6 @@ import (
 
 //CustomerMsgAddQB will add a customerMsgRef to the quickbooks database
 func CustomerMsgAddQB(workCTX WorkCTX) {
-	//insertWG.Add(1)
 	var err error
 	var escapedQBXML = bytes.Buffer{}
 	var templateBuff = bytes.Buffer{}
@@ -34,9 +33,11 @@ func CustomerMsgAddQB(workCTX WorkCTX) {
 		//Add the SalesReceiptQBXML to th slice for use in QBXMLMsgsRq, the top level template
 		qbxmlWork = append(qbxmlWork, templateBuff.String())
 
-		//Prepare the DataExtAdds //TODO make universal rith now its only for macsTieDowns
-		var dExts = DataExtAddQB(tempReceiptAdd.DefMacro)
-		qbxmlWork = append(qbxmlWork, dExts)
+		//Prepare the DataExtAdds
+		if cfg.DataExtActive {
+			var dExts = DataExtAddQB(tempReceiptAdd.DefMacro)
+			qbxmlWork = append(qbxmlWork, dExts)
+		}
 
 		//Reset the template buffer, and build and execute the toplevel QBXML template with the preceeding templates as data
 		templateBuff.Reset()
@@ -65,12 +66,14 @@ func CustomerMsgAddQB(workCTX WorkCTX) {
 		var qbxmlWork = make([]string, 0)
 
 		LoadTemplate(&tPath, tempOrderAdd, &templateBuff)
-		//Add the SalesOrderQBXML to th slice for use in QBXMLMsgsRq, the top level template
+		//Add the SalesOrderQBXML to the slice for use in QBXMLMsgsRq, the top level template
 		qbxmlWork = append(qbxmlWork, templateBuff.String())
 
-		//Prepare the DataExtAdds //TODO make universal rith now its only for macsTieDowns
-		var dExts = DataExtAddQB(tempOrderAdd.DefMacro)
-		qbxmlWork = append(qbxmlWork, dExts)
+		//Prepare the DataExtAdds
+		if cfg.DataExtActive {
+			var dExts = DataExtAddQB(tempOrderAdd.DefMacro)
+			qbxmlWork = append(qbxmlWork, dExts)
+		}
 
 		//Reset the template buffer, and build and execute the toplevel QBXML template with the preceeding templates as data
 		templateBuff.Reset()
@@ -83,7 +86,6 @@ func CustomerMsgAddQB(workCTX WorkCTX) {
 		}
 		//add the QBXML to the work slice
 		workCTX.Work = escapedQBXML.String()
-		//customerMsg.IsActive =
 	}
 
 	LoadTemplate(&tPath, &customerMsg, &templateBuff)

@@ -1026,7 +1026,7 @@ func CustomerAddRsHandler(parentNode Node, checkWork WorkCTX) {
 				switch {
 				//Customer already exists as a employee or vendor. Add "Cust" to the end of their name.
 				case customerAddRs.StatusMessage[len(customerAddRs.StatusMessage)-39:] == " of the list element is already in use.":
-					Log.WithFields(logrus.Fields{"OrderID": CheckPath("orderID", checkWork.Order), "CustomerName": BuildName(CheckPath("billing.firstName", checkWork.Order), CheckPath("billing.lastName", checkWork.Order))}).Info("Attempting to add a customer that already exists as a vendor or employee is not allowed")
+					Log.WithFields(logrus.Fields{"OrderID": CheckPath("orderID", checkWork.Order)}).Info("Attempting to add a customer that already exists as a vendor or employee is not allowed")
 					//Throw out the old order so this does not repeat
 					<-workInsertChan
 					var order = gabs.New()

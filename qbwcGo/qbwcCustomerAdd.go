@@ -9,7 +9,6 @@ import (
 
 //CustomerAddQB will add a customer to the quickbooks database
 func CustomerAddQB(workCTX WorkCTX) {
-	//insertWG.Add(1)
 	var err error
 	var escapedQBXML = bytes.Buffer{}
 	var templateBuff = bytes.Buffer{}
@@ -17,8 +16,6 @@ func CustomerAddQB(workCTX WorkCTX) {
 	var customer = CustomerAddRq{}
 	var fieldMap = ReadFieldMapping("./fieldMaps/customerAddMapping.json")
 	var addrFieldMap = ReadFieldMapping("./fieldMaps/addressMapping.json")
-	//var shipToIndex string
-	//var isReceipt bool
 	switch workCTX.Data.(type) {
 	case SalesReceiptAdd:
 		var tempReceiptAdd = workCTX.Data.(SalesReceiptAdd)
@@ -102,65 +99,8 @@ func CustomerAddQB(workCTX WorkCTX) {
 	var qbShipTos = make([]QBShipToAddress, len(shipToMapper))
 	for i, shipTo := range shipToMapper {
 		var qbShipTo = QBShipToAddress{}
-		//qbShipTo.
-
-		/*TODO remove after Mac's Tie Down install is complete
-		//Start shipping address
-		var addr = make([]string, 0) // For adding shipTo address info
-		//If first or last name is not empty, add them as the first line
-		if CheckPath("firstName", shipTo) != "" || CheckPath("lastName", shipTo) != "" {
-			//if title is not empty add it before the name
-			if CheckPath("title", shipTo) != "" {
-				addr = append(addr, CheckPath("title", shipTo)+" "+CheckPath("firstName", shipTo)+" "+CheckPath("lastName", shipTo))
-			} else {
-				addr = append(addr, CheckPath("firstName", shipTo)+" "+CheckPath("lastName", shipTo))
-			}
-		} //if shiping company is not empty ad it as the next available address slot
-		if CheckPath("company", shipTo) != "" {
-			addr = append(addr, CheckPath("company", shipTo))
-		}
-		*/
 
 		//Start shipping address
-		var addrLine1 = bytes.Buffer{}
-		var addr = make([]string, 0) // For adding Billing address info
-		//TODO make the same as billing?
-		switch {
-		case CheckPath("title", shipTo) != "":
-			addrLine1.WriteString(CheckPath("title", shipTo))
-			addrLine1.WriteString(" ")
-			fallthrough
-		case CheckPath("firstName", shipTo) != "":
-			addrLine1.WriteString(CheckPath("firstName", shipTo))
-			addrLine1.WriteString(" ")
-			fallthrough
-		case CheckPath("firstName", shipTo) != "":
-			addrLine1.WriteString(CheckPath("lastName", shipTo))
-			fallthrough
-		case CheckPath("company", shipTo) != "":
-			addrLine1.WriteString(" ")
-			CheckPath("company", shipTo)
-		}
-		addr = append(addr, FieldCharLimit(addrLine1.String(), addrCharLimit))
-		/*
-			//add Shiping address line 1 as the next available address slot
-			addr = append(addr, CheckPath("address1", shipTo))
-			//if shiping address line 2 is not empty add it as the next available address slot
-			if CheckPath("address2", shipTo) != "" {
-				addr = append(addr, CheckPath("address2", shipTo))
-			}
-			//add the shiping address info to the QB struct
-			if len(addr) > 0 {
-				qbShipTo.Addr1 = FieldCharLimit(addr[0], addrCharLimit)
-			}
-			if len(addr) > 1 {
-				qbShipTo.Addr2 = FieldCharLimit(addr[1], addrCharLimit)
-			}
-			if len(addr) > 2 {
-				qbShipTo.Addr3 = FieldCharLimit(addr[2], addrCharLimit)
-			}
-		*/
-
 		qbShipTo.Addr1 = FieldCharLimit(addrFieldMap["ShipAddress.Addr1"].Display(shipTo), addrCharLimit)
 		qbShipTo.Addr2 = FieldCharLimit(addrFieldMap["ShipAddress.Addr2"].Display(shipTo), addrCharLimit)
 		qbShipTo.Addr3 = FieldCharLimit(addrFieldMap["ShipAddress.Addr3"].Display(shipTo), addrCharLimit)
@@ -174,13 +114,11 @@ func CustomerAddQB(workCTX WorkCTX) {
 		//qbShipTo.DefaultShipTo =
 		qbShipTos[i] = qbShipTo
 	}
-	//Direct mapping for beatrice bakery
 	customer.CustomerTypeRef.FullName = fieldMap["CustomerTypeRef.FullName"].Display()
-	//Direct mapping for beatrice bakery
 	customer.SalesRepRef.FullName = fieldMap["SalesRepRef.FullName"].Display()
 
-	customer.Name = fieldMap["Name"].Display(workCTX.Order) //BuildName(CheckPath("billing.firstName", workCTX.Order), CheckPath("billing.lastName", workCTX.Order)) //CheckPath("billing.lastName", workCTX.Order) + ", " + CheckPath("billing.firstName", workCTX.Order)
-	//customer.AccountNumber = fieldMap["AccountNumber"].Display(workCTX.Order)
+	customer.Name = fieldMap["Name"].Display(workCTX.Order)
+	customer.AccountNumber = fieldMap["AccountNumber"].Display(workCTX.Order)
 	customer.Email = fieldMap["Email"].Display(workCTX.Order)
 	customer.Phone = CheckPath("billing.phone", workCTX.Order)
 	customer.FirstName = fieldMap["FirstName"].Display(workCTX.Order) //CheckPath("billing.firstName", workCTX.Order)
@@ -191,11 +129,8 @@ func CustomerAddQB(workCTX WorkCTX) {
 	customer.ClassRef.ListID = fieldMap["ClassRef.ListID"].Display(workCTX.Order)
 	customer.CompanyName = fieldMap["CompanyName"].Display(workCTX.Order)
 
-	//Direct mappings credit card for Beatrice,
-	customer.PreferredPaymentMethodRef.FullName = fieldMap["PreferredPaymentMethodRef.FullName"].Display() //fieldMap[""].Display(workCTX.Order)
-	//Direct mappings NET for beatrice bakery
+	customer.PreferredPaymentMethodRef.FullName = fieldMap["PreferredPaymentMethodRef.FullName"].Display()
 	customer.TermsRef.FullName = fieldMap["TermsRef.FullName"].Display()
-	//Direct mappings RETAIL for beatrice bakery
 	customer.PriceLevelRef.FullName = fieldMap["PriceLevelRef.FullName"].Display()
 
 	LoadTemplate(&tPath, &customer, &templateBuff)
@@ -205,7 +140,5 @@ func CustomerAddQB(workCTX WorkCTX) {
 	}
 	//Send prepaired QBXML to the workInsertChan
 	workInsertChan <- WorkCTX{Work: escapedQBXML.String(), Data: workCTX.Data, Order: workCTX.Order, Type: "customerAddRq", Attempted: workCTX.Attempted}
-	//insertWG.Done()
-	//workChan <- workCTX
 	workInsertChan <- workCTX
 }
