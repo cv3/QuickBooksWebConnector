@@ -48,14 +48,13 @@ func GetCV3Orders() { //(workChan chan string, doneChan chan bool) {
 		ErrLog.WithFields(logrus.Fields{"Error": err, "json": string(d)}).Error("Error parsing json into gabs container in GetCV3Order")
 	}
 	ordTrim := ord.Path("CV3Data.orders")
-	ordTrim, err = gabs.ParseJSONFile("./orderDiscount.json")
+	/*ordTrim, err = gabs.ParseJSONFile("./orderDiscount.json")
 	if err != nil {
 		fmt.Println(err)
-	}
+	}*/
 	Log.Debug(ordTrim.String())
 	//cv3go.PrintToFile(ordTrim.Bytes(), "./ARG.json")
 	//os.Exit(1)
-	//ordTrim, err = gabs.("./orderDiscount.json")
 	switch strings.ToLower(cfg.OrderType) {
 	case "salesreceipt":
 		MakeSalesReceipt(&workCount, &workCTX, ordTrim)
@@ -153,61 +152,9 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			qbReceiptAdd.RefNumber = fieldMap["RefNumber"].Display(o)
 			qbReceiptAdd.ShipToIndex = shipToIndex
 
-			var addrLine1 = bytes.Buffer{}
-
 			//start billing information assignment
 			//QB will either accept addr 1-5 or addr 1-2 and city state zip country
-			var addr = make([]string, 0) // For adding Billing address info
 
-			//TODO make the same as shipping?
-			switch {
-			case CheckPath("billing.title", o) != "":
-				addrLine1.WriteString(CheckPath("billing.title", o))
-				addrLine1.WriteString(" ")
-				fallthrough
-			case CheckPath("billing.firstName", o) != "" || CheckPath("billing.lastName", o) != "":
-				//addrLine1.WriteString(BuildName(CheckPath("billing.firstName", o), CheckPath("billing.lastName", o)))
-				addrLine1.WriteString(CheckPath("billing.firstName", o) + " " + CheckPath("billing.lastName", o))
-				fallthrough
-			case CheckPath("billing.company", o) != "":
-				if addrLine1.String() != "" {
-					addrLine1.WriteString(" ")
-				}
-				addrLine1.WriteString(CheckPath("billing.company", o))
-			}
-			addr = append(addr, FieldCharLimit(addrLine1.String(), addrCharLimit))
-
-			/*
-				//If first or last name is not empty, add them as the first line
-				if CheckPath("billing.firstName", o) != "" || CheckPath("billing.lastName", o) != "" {
-					//if title is not empty add it before the name
-					if CheckPath("billing.title", o) != "" {
-						addr = append(addr, CheckPath("billing.title", o)+" "+CheckPath("billing.firstName", o)+" "+CheckPath("billing.lastName", o))
-					} else if CheckPath("billing.company", o) != "" {
-						addr = append(addr, CheckPath("billing.company", o))
-					}
-					else {
-						addr = append(addr, CheckPath("billing.firstName", o)+" "+CheckPath("billing.lastName", o))
-					}
-				} //add billing address line 1 as the next available address slot
-			*/
-			/*
-				addr = append(addr, CheckPath("billing.address1", o))
-				//if billing address line 2 is not empty add it as the next available address slot
-				if CheckPath("billing.address2", o) != "" {
-					addr = append(addr, CheckPath("billing.address2", o))
-				}
-				//add the billing address info to the QB struct
-				if len(addr) > 0 {
-					qbReceiptAdd.BillAddress.Addr1 = FieldCharLimit(addr[0], addrCharLimit)
-				}
-				if len(addr) > 1 {
-					qbReceiptAdd.BillAddress.Addr2 = FieldCharLimit(addr[1], addrCharLimit)
-				}
-				if len(addr) > 2 {
-					qbReceiptAdd.BillAddress.Addr3 = FieldCharLimit(addr[2], addrCharLimit)
-				}
-			*/
 			qbReceiptAdd.BillAddress.Addr1 = FieldCharLimit(addrFieldMap["BillAddress.Addr1"].Display(o), addrCharLimit)
 			qbReceiptAdd.BillAddress.Addr2 = FieldCharLimit(addrFieldMap["BillAddress.Addr2"].Display(o), addrCharLimit)
 			qbReceiptAdd.BillAddress.Addr3 = FieldCharLimit(addrFieldMap["BillAddress.Addr3"].Display(o), addrCharLimit)
@@ -230,59 +177,8 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			} //else bliiling firstname is paypal, so do not add any customer info
 			qbReceiptAdd.ShipDate = fieldMap["ShipDate"].Display(shipTo)
 
-			addrLine1.Reset()
-
 			//Start shipping address
-			addr = make([]string, 0) // For adding Billing address info
-			//TODO make the same as billing?
-			switch {
-			case CheckPath("title", shipTo) != "":
-				addrLine1.WriteString(CheckPath("title", shipTo))
-				addrLine1.WriteString(" ")
-				fallthrough
-			case CheckPath("firstName", shipTo) != "" || CheckPath("lastName", shipTo) != "":
-				//addrLine1.WriteString(BuildName(CheckPath("firstName", shipTo), CheckPath("lastName", shipTo)))
-				addrLine1.WriteString(CheckPath("firstName", shipTo) + " " + CheckPath("lastName", shipTo))
-				fallthrough
-			case CheckPath("company", shipTo) != "":
-				if addrLine1.String() != "" {
-					addrLine1.WriteString(" ")
-				}
-				addrLine1.WriteString(CheckPath("company", shipTo))
-			}
-			addr = append(addr, FieldCharLimit(addrLine1.String(), addrCharLimit))
 
-			/*
-				//If first or last name is not empty, add them as the first line
-				if CheckPath("firstName", shipTo) != "" || CheckPath("lastName", shipTo) != "" {
-					//if title is not empty add it before the name
-					if CheckPath("title", shipTo) != "" {
-						addr = append(addr, CheckPath("title", shipTo)+" "+CheckPath("firstName", shipTo)+" "+CheckPath("lastName", shipTo))
-					} else {
-						addr = append(addr, CheckPath("firstName", shipTo)+" "+CheckPath("lastName", shipTo))
-					}
-				} //if shiping company is not empty ad it as the next available address slot
-				if CheckPath("company", shipTo) != "" {
-					addr = append(addr, CheckPath("company", shipTo))
-				} //add Shiping address line 1 as the next available address slot
-			*/
-			/*
-				addr = append(addr, CheckPath("address1", shipTo))
-				//if shiping address line 2 is not empty add it as the next available address slot
-				if CheckPath("address2", shipTo) != "" {
-					addr = append(addr, CheckPath("address2", shipTo))
-				}
-				//add the shiping address info to the QB struct
-				if len(addr) > 0 {
-					qbReceiptAdd.ShipAddress.Addr1 = FieldCharLimit(addr[0], addrCharLimit)
-				}
-				if len(addr) > 1 {
-					qbReceiptAdd.ShipAddress.Addr2 = FieldCharLimit(addr[1], addrCharLimit)
-				}
-				if len(addr) > 2 {
-					qbReceiptAdd.ShipAddress.Addr3 = FieldCharLimit(addr[2], addrCharLimit)
-				}
-			*/
 			qbReceiptAdd.ShipAddress.Addr1 = FieldCharLimit(addrFieldMap["ShipAddress.Addr1"].Display(shipTo), addrCharLimit)
 			qbReceiptAdd.ShipAddress.Addr2 = FieldCharLimit(addrFieldMap["ShipAddress.Addr2"].Display(shipTo), addrCharLimit)
 			qbReceiptAdd.ShipAddress.Addr3 = FieldCharLimit(addrFieldMap["ShipAddress.Addr3"].Display(shipTo), addrCharLimit)
@@ -290,7 +186,6 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			qbReceiptAdd.ShipAddress.State = FieldCharLimit(addrFieldMap["ShipAddress.State"].Display(shipTo), stateCharLimit)
 			qbReceiptAdd.ShipAddress.PostalCode = FieldCharLimit(addrFieldMap["ShipAddress.PostalCode"].Display(shipTo), zipCharLimit)
 			qbReceiptAdd.ShipAddress.Country = FieldCharLimit(addrFieldMap["ShipAddress.Country"].Display(shipTo), countryCharLimit)
-
 			//qbReceiptAdd.ShipAddress.Note = FieldCharLimit(CheckPath("message", shipTo), noteCharLimit)
 			//end shipping address
 			/*
@@ -446,15 +341,11 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 
 			qbOrderAdd.CustomerMsgRef.FullName = fieldMap["CustomerMsgRef"].Display(shipTo)
 			qbOrderAdd.CustomerMsgRef.ListID = fieldMap["CustomerMsgRef.ListID"].Display(shipTo)
-			//Direct mapping for MacTieDown
-			//if CheckPath("tax", shipTo) != "0.00"
-
 			qbOrderAdd.CustomerSalesTaxCodeRef.FullName = fieldMap["CustomerSalesTaxCodeRef.FullName"].Display(o)
 			qbOrderAdd.CustomerSalesTaxCodeRef.ListID = fieldMap["CustomerSalesTaxCodeRef.ListID"].Display(o)
 			qbOrderAdd.ItemSalesTaxRef.FullName = fieldMap["ItemSalesTaxRef.FullName"].Display(o)
 			qbOrderAdd.ItemSalesTaxRef.ListID = fieldMap["ItemSalesTaxRef.ListID"].Display(o)
-			//edit for mac's tie downs
-			qbOrderAdd.SalesRepRef.FullName = fieldMap["SalesRepRef.FullName"].Display() //fieldMap["SalesRepRef.FullName"].Display(o)
+			qbOrderAdd.SalesRepRef.FullName = fieldMap["SalesRepRef.FullName"].Display()
 			qbOrderAdd.SalesRepRef.ListID = fieldMap["SalesRepRef.ListID"].Display(o)
 			qbOrderAdd.TemplateRef.FullName = fieldMap["TemplateRef.FullName"].Display(o)
 			qbOrderAdd.TemplateRef.ListID = fieldMap["TemplateRef.ListID"].Display(o)
@@ -477,44 +368,6 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 			qbOrderAdd.IsManuallyClosed = fieldMap["IsManuallyClosed"].Display(o)
 
 			//start billing information assignment
-			var addrLine1 = bytes.Buffer{}
-			//QB will either accept addr 1-5 or addr 1-2 and city state zip country
-			var addr = make([]string, 0) // For adding Billing address info
-
-			//TODO make the same as shipping?
-			switch {
-			case CheckPath("billing.title", o) != "":
-				addrLine1.WriteString(CheckPath("billing.title", o))
-				addrLine1.WriteString(" ")
-				fallthrough
-			case CheckPath("billing.firstName", o) != "" || CheckPath("billing.lastName", o) != "":
-				addrLine1.WriteString(BuildName(CheckPath("billing.firstName", o), CheckPath("billing.lastName", o)))
-				fallthrough
-			case CheckPath("billing.company", o) != "":
-				if addrLine1.String() != "" {
-					addrLine1.WriteString(" ")
-				}
-				addrLine1.WriteString(CheckPath("billing.company", o))
-			}
-			addr = append(addr, FieldCharLimit(addrLine1.String(), addrCharLimit))
-			/*
-				//add billing address line 1 as the next available address slot
-				addr = append(addr, CheckPath("billing.address1", o))
-				//if billing address line 2 is not empty add it as the next available address slot
-				if CheckPath("billing.address2", o) != "" {
-					addr = append(addr, CheckPath("billing.address2", o))
-				}
-				//add the billing address info to the QB struct
-				if len(addr) > 0 {
-					qbOrderAdd.BillAddress.Addr1 = FieldCharLimit(addr[0], addrCharLimit)
-				}
-				if len(addr) > 1 {
-					qbOrderAdd.BillAddress.Addr2 = FieldCharLimit(addr[1], addrCharLimit)
-				}
-				if len(addr) > 2 {
-					qbOrderAdd.BillAddress.Addr3 = FieldCharLimit(addr[2], addrCharLimit)
-				}
-			*/
 			qbOrderAdd.BillAddress.Addr1 = FieldCharLimit(addrFieldMap["BillAddress.Addr1"].Display(o), addrCharLimit)
 			qbOrderAdd.BillAddress.Addr2 = FieldCharLimit(addrFieldMap["BillAddress.Addr2"].Display(o), addrCharLimit)
 			qbOrderAdd.BillAddress.Addr3 = FieldCharLimit(addrFieldMap["BillAddress.Addr3"].Display(o), addrCharLimit)
@@ -538,42 +391,6 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 			qbOrderAdd.ShipDate = fieldMap["ShipDate"].Display(shipTo)
 
 			//Start shipping address
-			addrLine1.Reset()
-			addr = make([]string, 0) // For adding Billing address info
-
-			switch {
-			case CheckPath("title", shipTo) != "":
-				addrLine1.WriteString(CheckPath("title", shipTo))
-				addrLine1.WriteString(" ")
-				fallthrough
-			case CheckPath("firstName", shipTo) != "" || CheckPath("lastName", shipTo) != "":
-				addrLine1.WriteString(BuildName(CheckPath("firstName", shipTo), CheckPath("lastName", shipTo)))
-				fallthrough
-			case CheckPath("company", shipTo) != "":
-				if addrLine1.String() != "" {
-					addrLine1.WriteString(" ")
-				}
-				addrLine1.WriteString(CheckPath("company", shipTo))
-			}
-			addr = append(addr, FieldCharLimit(addrLine1.String(), addrCharLimit))
-			/*
-				//add Shiping address line 1 as the next available address slot
-				addr = append(addr, CheckPath("address1", shipTo))
-				//if shiping address line 2 is not empty add it as the next available address slot
-				if CheckPath("address2", shipTo) != "" {
-					addr = append(addr, CheckPath("address2", shipTo))
-				}
-				//add the shiping address info to the QB struct
-				if len(addr) > 0 {
-					qbOrderAdd.ShipAddress.Addr1 = FieldCharLimit(addr[0], addrCharLimit)
-				}
-				if len(addr) > 1 {
-					qbOrderAdd.ShipAddress.Addr2 = FieldCharLimit(addr[1], addrCharLimit)
-				}
-				if len(addr) > 2 {
-					qbOrderAdd.ShipAddress.Addr3 = FieldCharLimit(addr[2], addrCharLimit)
-				}
-			*/
 			qbOrderAdd.ShipAddress.Addr1 = FieldCharLimit(addrFieldMap["ShipAddress.Addr1"].Display(shipTo), addrCharLimit)
 			qbOrderAdd.ShipAddress.Addr2 = FieldCharLimit(addrFieldMap["ShipAddress.Addr2"].Display(shipTo), addrCharLimit)
 			qbOrderAdd.ShipAddress.Addr3 = FieldCharLimit(addrFieldMap["ShipAddress.Addr3"].Display(shipTo), addrCharLimit)
@@ -581,10 +398,7 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 			qbOrderAdd.ShipAddress.State = FieldCharLimit(addrFieldMap["ShipAddress.State"].Display(shipTo), stateCharLimit)
 			qbOrderAdd.ShipAddress.PostalCode = FieldCharLimit(addrFieldMap["ShipAddress.PostalCode"].Display(shipTo), zipCharLimit)
 			qbOrderAdd.ShipAddress.Country = FieldCharLimit(addrFieldMap["ShipAddress.Country"].Display(shipTo), countryCharLimit)
-
-			//PONUMBER FOR MAC TIE DOWN
 			qbOrderAdd.PONumber = fieldMap["PONumber"].Display(o)
-
 			qbOrderAdd.ShipAddress.Note = FieldCharLimit(CheckPath("message", shipTo), noteCharLimit)
 			//end shipping address
 
@@ -610,8 +424,6 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 					//these variables must be set from the shipToProducts
 					tempInterface := AddOrderItem("sku", temp, prod, skus, &WorkCTX{}, shipToProductFieldMap)
 					temp = tempInterface.(*SalesOrderLineAdd)
-					//
-					//
 
 					temp.SalesTaxCodeRef.FullName = "Tax"
 					skus[CheckPath("SKU", prod)] = temp
@@ -1105,17 +917,6 @@ func (orderAdd *SalesOrderAdd) AddTax(o, shipTo *gabs.Container) {
 
 //AddTax will add a tax item
 func (receiptAdd *SalesReceiptAdd) AddTax(o, shipTo *gabs.Container) {
-	/*//Create Tax Item if tax > 0
-	taxFloat, err := strconv.ParseFloat(CheckPath("tax", shipTo), 64)
-	if err != nil {
-		Log.WithFields(logrus.Fields{"Error": err}).Error("Error parsing tax in SalesReceiptAdd")
-		ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error parsing tax in SalesReceiptAdd")
-	}
-	if taxFloat > 0 {
-		stateTaxMap := ReadFieldMapping("./fieldMaps/stateTaxMapping.json")
-		receiptAdd.ItemSalesTaxRef.FullName = stateTaxMap[CheckPath("billing.state", o)]
-	}*/
-	//The way it is for Beatrice Bakery at the moment
 	//Create Tax Item if tax > 0
 	taxFloat, err := strconv.ParseFloat(CheckPath("tax", shipTo), 64)
 	if err != nil {
@@ -1123,63 +924,24 @@ func (receiptAdd *SalesReceiptAdd) AddTax(o, shipTo *gabs.Container) {
 		ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error parsing tax in SalesReceiptAdd")
 	}
 	if taxFloat > 0 {
-		var taxMap = ReadFieldMapping("./fieldMaps/taxReceiptMapping.json")
-		var taxItem = SalesReceiptLineAdd{}
-		taxItem.ItemRef.FullName = taxMap["ItemRef.FullName"].Display() //"Tax"
-		taxItem.Desc = taxMap["Desc"].Display()                         //"Tax"
-		taxItem.Quantity = taxMap["Quantity"].Display()                 //"1"
-		taxItem.Amount = taxMap["Amount"].Display(shipTo)
-		receiptAdd.SalesReceiptLineAdds = append(receiptAdd.SalesReceiptLineAdds, taxItem)
+		stateTaxMap := ReadDictFile("./fieldMaps/stateTaxMapping.json")
+		receiptAdd.ItemSalesTaxRef.FullName = stateTaxMap[CheckPath("billing.state", o)]
 	}
-}
-
-//BuildName validates and checks the config for the desired layout and builds full name fields.  Then aranges the passed in firstName and lastName in the desired fashion
-func BuildName(fName, lName string) string {
-	var nameBuf = bytes.Buffer{}
-
-	//Check the data int the config nameArrangement's first field
-	switch { //lowercase and check for the existance of first or last to allow for user error
-	case strings.Contains(strings.ToLower(cfg.NameArrangement.First), "first"):
-		nameBuf.WriteString(fName)
-		break
-	case strings.Contains(strings.ToLower(cfg.NameArrangement.First), "last"):
-		nameBuf.WriteString(lName)
-		break
-	default:
-		Log.WithFields(logrus.Fields{"nameArrangement field": "first", "data": cfg.NameArrangement.First}).Error("The name arrangement in the config is unrecognizable.  Plese try firstName or lastName")
-		ErrLog.WithFields(logrus.Fields{"nameArrangement field": "first", "data": cfg.NameArrangement.First}).Error("The name arrangement in the config is unrecognizable.  Plese try firstName or lastName")
-		break
-	}
-
-	//Check the data int the config nameArrangement's last field
-	switch { //lowercase and check for the existance of first or last to allow for user error
-	case strings.Contains(strings.ToLower(cfg.NameArrangement.Last), "first"):
-		if nameBuf.String() != "" {
-			nameBuf.WriteString(cfg.NameArrangement.SeperatorString)
+	/*
+		//The way it is for Beatrice Bakery at the moment
+		//Create Tax Item if tax > 0
+		taxFloat, err := strconv.ParseFloat(CheckPath("tax", shipTo), 64)
+		if err != nil {
+			Log.WithFields(logrus.Fields{"Error": err}).Error("Error parsing tax in SalesReceiptAdd")
+			ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error parsing tax in SalesReceiptAdd")
 		}
-		nameBuf.WriteString(fName)
-		break
-	case strings.Contains(strings.ToLower(cfg.NameArrangement.Last), "last"):
-		if nameBuf.String() != "" {
-			nameBuf.WriteString(cfg.NameArrangement.SeperatorString)
-		}
-		nameBuf.WriteString(lName)
-		break
-	default:
-		Log.WithFields(logrus.Fields{"nameArrangement field": "last", "data": cfg.NameArrangement.First}).Error("The name arrangement in the config is unrecognizable.  Plese try firstName or lastName")
-		ErrLog.WithFields(logrus.Fields{"nameArrangement field": "last", "data": cfg.NameArrangement.First}).Error("The name arrangement in the config is unrecognizable.  Plese try firstName or lastName")
-		break
-	}
-	return nameBuf.String()
-}
-
-//BuildAddress asdf
-func (addr *Address) BuildAddress() {
-
-}
-
-//MapPayMethod will ad another layer of mapping so custom names can be used for each paymethod from cv3
-func (receiptAdd *SalesReceiptAdd) MapPayMethod(o *gabs.Container, cv3PayMethod string) {
-	//extraMap
-
+		if taxFloat > 0 {
+			var taxMap = ReadFieldMapping("./fieldMaps/taxReceiptMapping.json")
+			var taxItem = SalesReceiptLineAdd{}
+			taxItem.ItemRef.FullName = taxMap["ItemRef.FullName"].Display() //"Tax"
+			taxItem.Desc = taxMap["Desc"].Display()                         //"Tax"
+			taxItem.Quantity = taxMap["Quantity"].Display()                 //"1"
+			taxItem.Amount = taxMap["Amount"].Display(shipTo)
+			receiptAdd.SalesReceiptLineAdds = append(receiptAdd.SalesReceiptLineAdds, taxItem)
+		}*/
 }

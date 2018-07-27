@@ -18,13 +18,9 @@
 		"serviceID": "cv3_webservice_id"
 	},
 	"qbwcCredentials": {
-		"user": "user",
-		"pass": "pass"
-	},
-	"nameArrangement":{
-		"first":"firstName",
-		"seperatorString":" ",
-		"last":"lastName"
+		"user": "qbwc_username",
+		"pass": "qbwc_password"
+
 	},
 	"serverVersion": "",
 	"qbwcVersion": "",
