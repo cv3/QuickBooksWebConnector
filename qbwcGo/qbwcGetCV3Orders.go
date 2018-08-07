@@ -48,10 +48,10 @@ func GetCV3Orders() { //(workChan chan string, doneChan chan bool) {
 		ErrLog.WithFields(logrus.Fields{"Error": err, "json": string(d)}).Error("Error parsing json into gabs container in GetCV3Order")
 	}
 	ordTrim := ord.Path("CV3Data.orders")
-	/*ordTrim, err = gabs.ParseJSONFile("./orderDiscount.json")
+	ordTrim, err = gabs.ParseJSONFile("./orderDiscount.json")
 	if err != nil {
 		fmt.Println(err)
-	}*/
+	}
 	Log.Debug(ordTrim.String())
 	//cv3go.PrintToFile(ordTrim.Bytes(), "./ARG.json")
 	//os.Exit(1)
@@ -66,18 +66,18 @@ func GetCV3Orders() { //(workChan chan string, doneChan chan bool) {
 		Log.WithFields(logrus.Fields{"OrderType": cfg.OrderType}).Error("Error in GetCV3Orders, invalid order type in config")
 		ErrLog.WithFields(logrus.Fields{"OrderType": cfg.OrderType}).Error("Error in GetCV3Orders, invalid order type in config")
 	}
-
-	if workCount < 1 {
-		//workChan <- WorkCTX{Work: "", Type: "NoOp"}
-		if CheckPath("CV3Data.error", ord) != "" {
-			getLastErrChan <- CheckPath("CV3Data.error", ord)
-			Log.WithFields(logrus.Fields{"Error": CheckPath("CV3Data.error", ord), "Json": ord.String()}).Error("Error in CV3 order return")
-			ErrLog.WithFields(logrus.Fields{"Error": CheckPath("CV3Data.error", ord), "Json": ord.String()}).Error("Error in CV3 order return")
-		} else {
-			getLastErrChan <- "No new Orders"
-			Log.WithFields(logrus.Fields{"Json": ord.String()}).Info("No new orders in CV3 order return")
-		}
-	}
+	/*
+		if workCount < 1 {
+			//workChan <- WorkCTX{Work: "", Type: "NoOp"}
+			if CheckPath("CV3Data.error", ord) != "" {
+				getLastErrChan <- CheckPath("CV3Data.error", ord)
+				Log.WithFields(logrus.Fields{"Error": CheckPath("CV3Data.error", ord), "Json": ord.String()}).Error("Error in CV3 order return")
+				ErrLog.WithFields(logrus.Fields{"Error": CheckPath("CV3Data.error", ord), "Json": ord.String()}).Error("Error in CV3 order return")
+			} else {
+				getLastErrChan <- "No new Orders"
+				Log.WithFields(logrus.Fields{"Json": ord.String()}).Info("No new orders in CV3 order return")
+			}
+		}*/
 }
 
 //MakeSalesReceipt takes the cv3 order and turns it into a qbxml salesReceiptAdd
@@ -218,7 +218,7 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 				Log.WithFields(logrus.Fields{"Error": err, "ShipToProductsMapper": shipTo.Path("shipToProducts")}).Error("Error getting shipToProductsMapper Children in MakeSalesReceipt")
 				ErrLog.WithFields(logrus.Fields{"Error": err, "ShipToProductsMapper": shipTo.Path("shipToProducts")}).Error("Error getting shipToProductsMapper Children in MakeSalesReceipt")
 			}
-			var shipToProductFieldMap = ReadFieldMapping("./fieldMaps/cv3ShipToProductReceiptMapping.json")
+			var shipToProductFieldMap = ReadFieldMapping("./fieldMaps/salesReceiptLineAddMapping.json")
 			//iterate over shipToProducts, save their skus, and start building their line add objects
 			for _, prod := range shipToProductsChildren {
 				//check for duplicates exist?
@@ -239,8 +239,8 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			}
 			qbReceiptAdd.TxnDate = fieldMap["TxnDate"].Display(o)
 
-			qbReceiptAdd.AddShipping(shipTo)
 			qbReceiptAdd.AddDiscount(o, shipToIndex)
+			qbReceiptAdd.AddShipping(shipTo)
 
 			qbReceiptAdd.AddTax(o, shipTo)
 
@@ -411,7 +411,7 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 				Log.WithFields(logrus.Fields{"Error": err, "ShipToProductsMapper": shipTo.Path("shipToProducts")}).Error("Error getting shipToProductsMapper Children in MakeSalesOrder")
 				ErrLog.WithFields(logrus.Fields{"Error": err, "ShipToProductsMapper": shipTo.Path("shipToProducts")}).Error("Error getting shipToProductsMapper Children in MakeSalesOrder")
 			}
-			var shipToProductFieldMap = ReadFieldMapping("./fieldMaps/cv3ShipToProductOrderMapping.json")
+			var shipToProductFieldMap = ReadFieldMapping("./fieldMaps/orderLineAddMapping.json")
 			//iterate over shipToProducts, save their skus, and start building their line add objects
 			for _, prod := range shipToProductsChildren {
 				if sMap[CheckPath("SKU", prod)] == true {
@@ -433,8 +433,8 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 			}
 			qbOrderAdd.TxnDate = fieldMap["TxnDate"].Display(o)
 
-			qbOrderAdd.AddShipping(shipTo)
 			qbOrderAdd.AddDiscount(o, shipToIndex)
+			qbOrderAdd.AddShipping(shipTo)
 
 			//Add the tax if applicable
 			qbOrderAdd.AddTax(o, shipTo)
