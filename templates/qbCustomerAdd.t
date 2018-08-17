@@ -7,8 +7,8 @@
                     <Name>{{.Name}}</Name>{{end}}{{if .IsActive}}
                     <IsActive>{{.IsActive}}</IsActive>{{end}}{{if or .ClassRef.FullName .ClassRef.ListID}}
                     <ClassRef>{{if .ClassRef.ListID}}
-                        <ListID>{{.CLassRef.ListID}}</ListID>{{end}}{{if .CustomerRef.FullName}}
-                        <FullName>{{.CustomerRef.FullName}}</FullName>{{end}}
+                        <ListID>{{.ClassRef.ListID}}</ListID>{{end}}{{if .ClassRef.FullName}}
+                        <FullName>{{.ClassRef.FullName}}</FullName>{{end}}
                     </ClassRef>{{end}}{{ if or .ParentRef.FullName .ParentRef.ListID}}
                     <ParentRef>{{if .ParentRef.ListID}}
                         <ListID>{{.ParentRef.ListID}}</ListID>{{end}}{{ if .ParentRef.FullName}}

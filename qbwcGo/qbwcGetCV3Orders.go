@@ -135,7 +135,8 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 				qbReceiptAdd.IsPending = "true"
 			}
 			qbReceiptAdd.FOB = fieldMap["FOB"].Display(o)
-			qbReceiptAdd.CustomerMsgRef.FullName = fieldMap["CustomerMsgRef.FullName"].Display(shipTo)
+
+			qbReceiptAdd.CustomerMsgRef.FullName = strings.Replace(fieldMap["CustomerMsgRef.FullName"].Display(shipTo), "::", "\n", -1)
 			//qbReceiptAdd.CustomerMsgRef.ListID = fieldMap["CustomerMsgRef.ListID"].Display(shipTo)
 			qbReceiptAdd.CustomerSalesTaxCodeRef.FullName = fieldMap["CustomerSalesTaxCodeRef.FullName"].Display(o)
 			qbReceiptAdd.CustomerSalesTaxCodeRef.ListID = fieldMap["CustomerSalesTaxCodeRef.ListID"].Display(o)
@@ -762,7 +763,7 @@ func AddReceiptItem(sku string, prod interface{}, item *gabs.Container, skus map
 		skus[sku].(*SalesReceiptLineAdd).OptionForPriceRuleConflict = itemFieldMap["OptionForPriceRuleConflict"].Display(item)
 	}
 	if itemFieldMap["InventorySiteRef.FullName"].Display(item) != "" {
-		skus[sku].(*SalesReceiptLineAdd).InventorySiteLocationRef.FullName = itemFieldMap["InventorySiteRef.FullName"].Display(item)
+		skus[sku].(*SalesReceiptLineAdd).InventorySiteRef.FullName = itemFieldMap["InventorySiteRef.FullName"].Display(item)
 	}
 	if itemFieldMap["InventorySiteRef.ListID"].Display(item) != "" {
 		skus[sku].(*SalesReceiptLineAdd).InventorySiteRef.ListID = itemFieldMap["InventorySiteRef.ListID"].Display(item)
