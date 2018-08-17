@@ -17,9 +17,15 @@
 			"mappedField": true
 		}
 	],
-	"CustomerMsgRef": [
+	"CustomerMsgRef.FullName": [
 		{
 			"data": "message",
+			"mappedField": true
+		}
+	],
+	"CustomerMsgRef.ListID": [
+		{
+			"data": "",
 			"mappedField": true
 		}
 	],
