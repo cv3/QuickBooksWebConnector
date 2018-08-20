@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"text/template"
@@ -1141,4 +1142,35 @@ func StrExtract(sExper, sAdelim, sCdelim string, nOccur int) string {
 	aExper = strings.Split(sMember, sCdelim)
 
 	return aExper[0]
+}
+
+//ConvertColonPairsToNewlines for use with stores that use :: as delimiters between newlines
+func ConvertColonPairsToNewlines(incoming string) string {
+	return strings.Replace(incoming, "::", "\n", -1)
+}
+
+//ConvertColonsToSpaces is to remove colons from qbxml as colons indicate parent/child relationships to quickbooks
+func ConvertColonsToSpaces(incoming string) string {
+	return strings.Replace(incoming, ":", " ", -1)
+}
+
+//StripBlanksAndNewlines returns an empty string "" if the incoming string contains nothing but spaces and newlines.
+// Otherwise, return the string as it was received.
+func StripBlanksAndNewlines(incoming string) string {
+	reLeadcloseWhtsp := regexp.MustCompile(`^[\s\p{Zs}]+|[\s\p{Zs}]+$`)
+	reInsideWhtsp := regexp.MustCompile(`[\s\p{Zs}]{2,}`)
+	final := reLeadcloseWhtsp.ReplaceAllString(incoming, "")
+	final = reInsideWhtsp.ReplaceAllString(final, " ")
+	if final == "" {
+		return final
+	}
+	return incoming
+}
+
+//ConvertCustomerMsgRef will check for the cv3 elimiter :: and replace single colons with a space
+func ConvertCustomerMsgRef(s string) string {
+	converted := ConvertColonPairsToNewlines(s)
+	converted = ConvertColonsToSpaces(converted)
+	converted = StripBlanksAndNewlines(converted)
+	return converted
 }

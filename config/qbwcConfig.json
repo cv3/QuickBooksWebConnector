@@ -18,11 +18,11 @@
 		"serviceID": "cv3_webservice_id"
 	},
 	"qbwcCredentials": {
-		"user": "qbwc_username",
-		"pass": "qbwc_password"
+		"user": "user",
+		"pass": "pass"
 
 	},
-	"serverVersion": "1.1.5",
+	"serverVersion": "1.1.6",
 	"qbwcVersion": "",
 	"maxWorkAttempts":7,
 	"confirmOrders":false,
