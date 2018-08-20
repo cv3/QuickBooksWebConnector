@@ -48,11 +48,11 @@ func GetCV3Orders() { //(workChan chan string, doneChan chan bool) {
 		ErrLog.WithFields(logrus.Fields{"Error": err, "json": string(d)}).Error("Error parsing json into gabs container in GetCV3Order")
 	}
 	ordTrim := ord.Path("CV3Data.orders")
-	/*
-		ordTrim, err = gabs.ParseJSONFile("./orderDiscount.json")
-		if err != nil {
-			fmt.Println(err)
-		}*/
+
+	ordTrim, err = gabs.ParseJSONFile("./orderDiscount.json")
+	if err != nil {
+		fmt.Println(err)
+	}
 	Log.Debug(ordTrim.String())
 	//cv3go.PrintToFile(ordTrim.Bytes(), "./ARG.json")
 	//os.Exit(1)
@@ -67,18 +67,19 @@ func GetCV3Orders() { //(workChan chan string, doneChan chan bool) {
 		Log.WithFields(logrus.Fields{"OrderType": cfg.OrderType}).Error("Error in GetCV3Orders, invalid order type in config")
 		ErrLog.WithFields(logrus.Fields{"OrderType": cfg.OrderType}).Error("Error in GetCV3Orders, invalid order type in config")
 	}
-
-	if workCount < 1 {
-		//workChan <- WorkCTX{Work: "", Type: "NoOp"}
-		if CheckPath("CV3Data.error", ord) != "" {
-			getLastErrChan <- CheckPath("CV3Data.error", ord)
-			Log.WithFields(logrus.Fields{"Error": CheckPath("CV3Data.error", ord), "Json": ord.String()}).Error("Error in CV3 order return")
-			ErrLog.WithFields(logrus.Fields{"Error": CheckPath("CV3Data.error", ord), "Json": ord.String()}).Error("Error in CV3 order return")
-		} else {
-			getLastErrChan <- "No new Orders"
-			Log.WithFields(logrus.Fields{"Json": ord.String()}).Info("No new orders in CV3 order return")
+	/*
+		if workCount < 1 {
+			//workChan <- WorkCTX{Work: "", Type: "NoOp"}
+			if CheckPath("CV3Data.error", ord) != "" {
+				getLastErrChan <- CheckPath("CV3Data.error", ord)
+				Log.WithFields(logrus.Fields{"Error": CheckPath("CV3Data.error", ord), "Json": ord.String()}).Error("Error in CV3 order return")
+				ErrLog.WithFields(logrus.Fields{"Error": CheckPath("CV3Data.error", ord), "Json": ord.String()}).Error("Error in CV3 order return")
+			} else {
+				getLastErrChan <- "No new Orders"
+				Log.WithFields(logrus.Fields{"Json": ord.String()}).Info("No new orders in CV3 order return")
+			}
 		}
-	}
+	*/
 }
 
 //MakeSalesReceipt takes the cv3 order and turns it into a qbxml salesReceiptAdd
@@ -136,8 +137,9 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			}
 			qbReceiptAdd.FOB = fieldMap["FOB"].Display(o)
 
-			qbReceiptAdd.CustomerMsgRef.FullName = strings.Replace(fieldMap["CustomerMsgRef.FullName"].Display(shipTo), "::", "\n", -1)
-			//qbReceiptAdd.CustomerMsgRef.ListID = fieldMap["CustomerMsgRef.ListID"].Display(shipTo)
+			qbReceiptAdd.CustomerMsgRef.FullName = ConvertCustomerMsgRef(fieldMap["CustomerMsgRef.FullName"].Display(shipTo))
+
+			qbReceiptAdd.CustomerMsgRef.ListID = fieldMap["CustomerMsgRef.ListID"].Display(shipTo)
 			qbReceiptAdd.CustomerSalesTaxCodeRef.FullName = fieldMap["CustomerSalesTaxCodeRef.FullName"].Display(o)
 			qbReceiptAdd.CustomerSalesTaxCodeRef.ListID = fieldMap["CustomerSalesTaxCodeRef.ListID"].Display(o)
 			qbReceiptAdd.ItemSalesTaxRef.FullName = fieldMap["ItemSalesTaxRef.FullName"].Display(o)
@@ -170,12 +172,12 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			qbReceiptAdd.ShipMethodRef.FullName = fieldMap["ShipMethodRef.FullName"].Display(shipTo)
 			qbReceiptAdd.ShipMethodRef.ListID = fieldMap["ShipMethodRef.ListID"].Display(shipTo)
 			qbReceiptAdd.Memo = fieldMap["Memo"].Display(o)
-			qbReceiptAdd.PaymentMethodRef.FullName = fieldMap["PaymentMethodRef.FullName"].Display(o)
-			qbReceiptAdd.PaymentMethodRef.ListID = fieldMap["PaymentMethodRef.ListID"].Display(o)
+			//qbReceiptAdd.PaymentMethodRef.FullName = fieldMap["PaymentMethodRef.FullName"].Display(o)
+			//qbReceiptAdd.PaymentMethodRef.ListID = fieldMap["PaymentMethodRef.ListID"].Display(o)
 
 			//If the billing name is not paypal, so use it as the customers name
 			if !strings.Contains(strings.ToLower(CheckPath("billing.firstName", o)), "paypal") {
-				qbReceiptAdd.CustomerRef.FullName = fieldMap["CustomerRef.FullName"].Display(o) //BuildName(CheckPath("billing.firstName", o), CheckPath("billing.lastName", o))
+				//qbReceiptAdd.CustomerRef.FullName = fieldMap["CustomerRef.FullName"].Display(o) //BuildName(CheckPath("billing.firstName", o), CheckPath("billing.lastName", o))
 			} //else bliiling firstname is paypal, so do not add any customer info
 			qbReceiptAdd.ShipDate = fieldMap["ShipDate"].Display(shipTo)
 
@@ -342,8 +344,11 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 			qbOrderAdd.FOB = fieldMap["FOB"].Display(o)
 
 			qbOrderAdd.CustomerMsgRef.FullName = fieldMap["CustomerMsgRef"].Display(shipTo)
+
+			qbOrderAdd.CustomerSalesTaxCodeRef.FullName = ConvertCustomerMsgRef(fieldMap["CustomerMsgRef.FullName"].Display(shipTo))
+
 			qbOrderAdd.CustomerMsgRef.ListID = fieldMap["CustomerMsgRef.ListID"].Display(shipTo)
-			qbOrderAdd.CustomerSalesTaxCodeRef.FullName = fieldMap["CustomerSalesTaxCodeRef.FullName"].Display(o)
+
 			qbOrderAdd.CustomerSalesTaxCodeRef.ListID = fieldMap["CustomerSalesTaxCodeRef.ListID"].Display(o)
 			qbOrderAdd.ItemSalesTaxRef.FullName = fieldMap["ItemSalesTaxRef.FullName"].Display(o)
 			qbOrderAdd.ItemSalesTaxRef.ListID = fieldMap["ItemSalesTaxRef.ListID"].Display(o)
