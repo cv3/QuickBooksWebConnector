@@ -48,11 +48,12 @@ func GetCV3Orders() { //(workChan chan string, doneChan chan bool) {
 		ErrLog.WithFields(logrus.Fields{"Error": err, "json": string(d)}).Error("Error parsing json into gabs container in GetCV3Order")
 	}
 	ordTrim := ord.Path("CV3Data.orders")
-
-	ordTrim, err = gabs.ParseJSONFile("./orderDiscount.json")
-	if err != nil {
-		fmt.Println(err)
-	}
+	/*
+		ordTrim, err = gabs.ParseJSONFile("./orderDiscount.json")
+		if err != nil {
+			fmt.Println(err)
+		}
+	*/
 	Log.Debug(ordTrim.String())
 	//cv3go.PrintToFile(ordTrim.Bytes(), "./ARG.json")
 	//os.Exit(1)
@@ -67,19 +68,19 @@ func GetCV3Orders() { //(workChan chan string, doneChan chan bool) {
 		Log.WithFields(logrus.Fields{"OrderType": cfg.OrderType}).Error("Error in GetCV3Orders, invalid order type in config")
 		ErrLog.WithFields(logrus.Fields{"OrderType": cfg.OrderType}).Error("Error in GetCV3Orders, invalid order type in config")
 	}
-	/*
-		if workCount < 1 {
-			//workChan <- WorkCTX{Work: "", Type: "NoOp"}
-			if CheckPath("CV3Data.error", ord) != "" {
-				getLastErrChan <- CheckPath("CV3Data.error", ord)
-				Log.WithFields(logrus.Fields{"Error": CheckPath("CV3Data.error", ord), "Json": ord.String()}).Error("Error in CV3 order return")
-				ErrLog.WithFields(logrus.Fields{"Error": CheckPath("CV3Data.error", ord), "Json": ord.String()}).Error("Error in CV3 order return")
-			} else {
-				getLastErrChan <- "No new Orders"
-				Log.WithFields(logrus.Fields{"Json": ord.String()}).Info("No new orders in CV3 order return")
-			}
+
+	if workCount < 1 {
+		//workChan <- WorkCTX{Work: "", Type: "NoOp"}
+		if CheckPath("CV3Data.error", ord) != "" {
+			getLastErrChan <- CheckPath("CV3Data.error", ord)
+			Log.WithFields(logrus.Fields{"Error": CheckPath("CV3Data.error", ord), "Json": ord.String()}).Error("Error in CV3 order return")
+			ErrLog.WithFields(logrus.Fields{"Error": CheckPath("CV3Data.error", ord), "Json": ord.String()}).Error("Error in CV3 order return")
+		} else {
+			getLastErrChan <- "No new Orders"
+			Log.WithFields(logrus.Fields{"Json": ord.String()}).Info("No new orders in CV3 order return")
 		}
-	*/
+	}
+
 }
 
 //MakeSalesReceipt takes the cv3 order and turns it into a qbxml salesReceiptAdd
@@ -177,7 +178,7 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 
 			//If the billing name is not paypal, so use it as the customers name
 			if !strings.Contains(strings.ToLower(CheckPath("billing.firstName", o)), "paypal") {
-				//qbReceiptAdd.CustomerRef.FullName = fieldMap["CustomerRef.FullName"].Display(o) //BuildName(CheckPath("billing.firstName", o), CheckPath("billing.lastName", o))
+				qbReceiptAdd.CustomerRef.FullName = fieldMap["CustomerRef.FullName"].Display(o) //BuildName(CheckPath("billing.firstName", o), CheckPath("billing.lastName", o))
 			} //else bliiling firstname is paypal, so do not add any customer info
 			qbReceiptAdd.ShipDate = fieldMap["ShipDate"].Display(shipTo)
 
