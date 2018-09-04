@@ -22,7 +22,7 @@
 		"pass": "pass"
 
 	},
-	"serverVersion": "1.1.7",
+	"serverVersion": "1.1.8",
 	"qbwcVersion": "",
 	"maxWorkAttempts":7,
 	"confirmOrders":false,

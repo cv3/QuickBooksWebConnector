@@ -21,7 +21,9 @@ func CustomerMsgAddQB(workCTX WorkCTX) {
 		var tempReceiptAdd = workCTX.Data.(SalesReceiptAdd)
 		customerMsg.Name = tempReceiptAdd.CustomerMsgRef.FullName
 
-		tempReceiptAdd.DefMacro = tempReceiptAdd.DefMacro + "_M"
+		if tempReceiptAdd.DefMacro != "" {
+			tempReceiptAdd.DefMacro = tempReceiptAdd.DefMacro + "_M"
+		}
 		workCTX.Data = tempReceiptAdd
 
 		var templateBuff = bytes.Buffer{}
@@ -57,7 +59,9 @@ func CustomerMsgAddQB(workCTX WorkCTX) {
 		var tempOrderAdd = workCTX.Data.(SalesOrderAdd)
 		customerMsg.Name = tempOrderAdd.CustomerMsgRef.FullName
 
-		tempOrderAdd.DefMacro = tempOrderAdd.DefMacro + "_M"
+		if tempOrderAdd.DefMacro != "" {
+			tempOrderAdd.DefMacro = tempOrderAdd.DefMacro + "_M"
+		}
 		workCTX.Data = tempOrderAdd
 
 		var templateBuff = bytes.Buffer{}
