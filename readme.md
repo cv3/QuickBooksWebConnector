@@ -139,4 +139,4 @@ Note about permissions to Intuit's log file:
 ## Additional Instructions ##
 
 ### Field Mapping ###
-Custom field mapping is performed in the json files within qbwcServer/**fieldMaps**. For field mapping documentation, view the readme in [qbwcServer/fieldMaps/mapping docs](fieldMaps/mapping%20docs).
+Custom field mapping is performed in the json files within qbwcServer/**fieldMaps**.
