@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	devTools "github.com/TeamFairmont/QuickBooksWebConnector/qbwcGo/devTools/functions"
+	devTools "github.com/TeamFairmont/QuickBooksWebConnector/fieldMaps/devTools/functions"
 )
 
 func main() {
