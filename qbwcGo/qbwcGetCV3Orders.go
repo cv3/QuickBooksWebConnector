@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"encoding/xml"
-	"fmt"
 	"html"
 	"io/ioutil"
 	"math/rand"
@@ -39,7 +38,7 @@ func GetCV3Orders() { //(workChan chan string, doneChan chan bool) {
 	//api.Debug = true
 	api.SetCredentials(cfg.CV3Credentials.User, cfg.CV3Credentials.Pass, cfg.CV3Credentials.ServiceID) //("connector", "#CV3C0nn3ct0r!a", "6c383bc896")
 	api.GetOrdersNew()
-	//api.GetOrdersRange("7152", "7152") //("25678", "25678") //("7152", "7152") //"7142")
+	//api.GetOrdersRange("50564", "50564") //("25678", "25678") //("7152", "7152") //"7142")
 	var d = api.Execute(true)
 	Log.Debug(string(d))
 	ord, err := gabs.ParseJSON(d)
@@ -49,13 +48,17 @@ func GetCV3Orders() { //(workChan chan string, doneChan chan bool) {
 	}
 	ordTrim := ord.Path("CV3Data.orders")
 	/*
-		ordTrim, err = gabs.ParseJSONFile("./orderDiscount.json")
+		ordTrim, err := gabs.ParseJSONFile("./orderDiscount.json")
 		if err != nil {
 			fmt.Println(err)
 		}
-	*/
-	Log.Debug(ordTrim.String())
-	//cv3go.PrintToFile(ordTrim.Bytes(), "./ARG.json")
+		for i := 0; i < 10; i++ {
+			for j := 0; j < 100; j++ {
+				ErrLog.Error(ordTrim.String())
+				time.Sleep(1111)
+			}
+		}*/
+	//cv3go.PrintToFile([]byte(ordTrim.StringIndent("", "  ")), "./percentDiscount.json")
 	//os.Exit(1)
 	switch strings.ToLower(cfg.OrderType) {
 	case "salesreceipt":
@@ -88,14 +91,19 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 	//Prepare gabs container for range loop
 	oMapper, err := ordersMapper.Children()
 	if err != nil {
-		fmt.Println("omapper ", err)
 		Log.WithFields(logrus.Fields{"Error": err, "OrdersMapper": ordersMapper}).Error("Error getting ordersMapper Children in MakeSalesReceipt")
 		ErrLog.WithFields(logrus.Fields{"Error": err, "OrdersMapper": ordersMapper}).Error("Error getting ordersMapper Children in MakeSalesReceipt")
 	} //Load the dynamic field mappings froma  file
 	var fieldMap = ReadFieldMapping("./fieldMaps/receiptMapping.json")
 	var addrFieldMap = ReadFieldMapping("./fieldMaps/addressMapping.json")
+
 	//iterate over the orders, then the shiptos, as each shipto needs to be handled as a seperate sales receipt in QB
 	for _, o := range oMapper {
+		//cv3go.PrintToFile(o.Bytes(), CheckPath("orderID", o))
+		//fmt.Println(CheckPath("orderID", o))
+		var orderDiscount = new(DiscountCTX)
+		orderDiscount.TotalDiscount = ParseFloat(CheckPath("totalOrderDiscount.totalDiscount", o))
+		orderDiscount.RemainingDiscount = orderDiscount.TotalDiscount
 
 		//prepare the shipTo gabs container for a range loop
 		shipToMapper, err := o.Path("shipTos").Children()
@@ -110,9 +118,10 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 		}
 		for shipToIndex, shipTo := range shipToMapper {
 			var qbReceiptAdd = SalesReceiptAdd{} //object to hold current shipto information
+			qbReceiptAdd.DiscountCTX = orderDiscount
+			qbReceiptAdd.DiscountCTX.SubTotal = 0.0
 			qbReceiptAdd.CV3OrderID = CheckPath("orderID", o)
 			*workCount++
-
 			//checkPayMethod will return the transactionID of the passed in PayMethod
 			CheckPayMethod(o, "payMethod")
 			CheckPayMethod(o, "additionalPayMethod")
@@ -165,7 +174,7 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			qbReceiptAdd.BillAddress.Addr3 = FieldCharLimit(addrFieldMap["BillAddress.Addr3"].Display(o), addrCharLimit)
 			qbReceiptAdd.BillAddress.City = FieldCharLimit(addrFieldMap["BillAddress.City"].Display(o), cityCharLimit)
 			qbReceiptAdd.BillAddress.Country = FieldCharLimit(addrFieldMap["BillAddress.Country"].Display(o), countryCharLimit)
-			qbReceiptAdd.BillAddress.PostalCode = FieldCharLimit(addrFieldMap["BillAddress.Zip"].Display(o), zipCharLimit)
+			qbReceiptAdd.BillAddress.PostalCode = FieldCharLimit(addrFieldMap["BillAddress.PostalCode"].Display(o), zipCharLimit)
 			qbReceiptAdd.BillAddress.State = FieldCharLimit(addrFieldMap["BillAddress.State"].Display(o), stateCharLimit)
 			//qbReceiptAdd.BillAddress.Note not used
 			//end billing information
@@ -173,8 +182,8 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			qbReceiptAdd.ShipMethodRef.FullName = fieldMap["ShipMethodRef.FullName"].Display(shipTo)
 			qbReceiptAdd.ShipMethodRef.ListID = fieldMap["ShipMethodRef.ListID"].Display(shipTo)
 			qbReceiptAdd.Memo = fieldMap["Memo"].Display(o)
-			//qbReceiptAdd.PaymentMethodRef.FullName = fieldMap["PaymentMethodRef.FullName"].Display(o)
-			//qbReceiptAdd.PaymentMethodRef.ListID = fieldMap["PaymentMethodRef.ListID"].Display(o)
+			qbReceiptAdd.PaymentMethodRef.FullName = fieldMap["PaymentMethodRef.FullName"].Display(o)
+			qbReceiptAdd.PaymentMethodRef.ListID = fieldMap["PaymentMethodRef.ListID"].Display(o)
 
 			//If the billing name is not paypal, so use it as the customers name
 			if !strings.Contains(strings.ToLower(CheckPath("billing.firstName", o)), "paypal") {
@@ -235,7 +244,7 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 					s = append(s, CheckPath("SKU", prod))
 					var temp = &SalesReceiptLineAdd{}
 					//these variables must be set from the shipToProducts
-					tempInterface := AddReceiptItem("sku", temp, prod, skus, &WorkCTX{}, shipToProductFieldMap)
+					tempInterface := qbReceiptAdd.AddReceiptItem("sku", temp, prod, skus, &WorkCTX{}, shipToProductFieldMap)
 					temp = tempInterface.(*SalesReceiptLineAdd)
 
 					skus[CheckPath("SKU", prod)] = temp
@@ -244,6 +253,7 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			}
 			qbReceiptAdd.TxnDate = fieldMap["TxnDate"].Display(o)
 
+			//Calculate discounts
 			qbReceiptAdd.AddDiscount(o, shipToIndex)
 			qbReceiptAdd.AddShipping(shipTo)
 
@@ -310,6 +320,9 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 	var addrFieldMap = ReadFieldMapping("./fieldMaps/addressMapping.json")
 	//iterate over the orders, then the shiptos, as each shipto needs to be handled as a seperate sales receipt in QB
 	for _, o := range oMapper {
+		var orderDiscount = new(DiscountCTX)
+		orderDiscount.TotalDiscount = ParseFloat(CheckPath("totalOrderDiscount.totalDiscount", o))
+		orderDiscount.RemainingDiscount = orderDiscount.TotalDiscount
 		//prepare shipTo gabs container for range loop
 		shipToMapper, err := o.Path("shipTos").Children()
 		if err != nil {
@@ -324,6 +337,8 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 		for shipToIndex, shipTo := range shipToMapper {
 			*workCount++
 			var qbOrderAdd = SalesOrderAdd{} //object to hold current shipto information
+			qbOrderAdd.DiscountCTX = orderDiscount
+			qbOrderAdd.DiscountCTX.SubTotal = 0.0
 			qbOrderAdd.CV3OrderID = CheckPath("orderID", o)
 			qbOrderAdd.RefNumber = fieldMap["RefNumber"].Display(o)
 			qbOrderAdd.ShipToIndex = shipToIndex
@@ -381,7 +396,7 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 			qbOrderAdd.BillAddress.Addr3 = FieldCharLimit(addrFieldMap["BillAddress.Addr3"].Display(o), addrCharLimit)
 			qbOrderAdd.BillAddress.City = FieldCharLimit(addrFieldMap["BillAddress.City"].Display(o), cityCharLimit)
 			qbOrderAdd.BillAddress.Country = FieldCharLimit(addrFieldMap["BillAddress.Country"].Display(o), countryCharLimit)
-			qbOrderAdd.BillAddress.PostalCode = FieldCharLimit(addrFieldMap["BillAddress.Zip"].Display(o), zipCharLimit)
+			qbOrderAdd.BillAddress.PostalCode = FieldCharLimit(addrFieldMap["BillAddress.PostalCode"].Display(o), zipCharLimit)
 			qbOrderAdd.BillAddress.State = FieldCharLimit(addrFieldMap["BillAddress.State"].Display(o), stateCharLimit)
 			//end billing information
 
@@ -430,7 +445,7 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 					s = append(s, CheckPath("SKU", prod))
 					var temp = &SalesOrderLineAdd{} //SalesReceiptPart{}
 					//these variables must be set from the shipToProducts
-					tempInterface := AddOrderItem("sku", temp, prod, skus, &WorkCTX{}, shipToProductFieldMap)
+					tempInterface := qbOrderAdd.AddOrderItem("sku", temp, prod, skus, &WorkCTX{}, shipToProductFieldMap)
 					temp = tempInterface.(*SalesOrderLineAdd)
 
 					temp.SalesTaxCodeRef.FullName = "Tax"
@@ -593,7 +608,6 @@ func ReadFieldMapping(path string) map[string]MappingObject {
 	}
 	err = json.Unmarshal(mapFile, &mapObj)
 	if err != nil {
-		getLastErrChan <- err.Error()
 		Log.WithFields(logrus.Fields{
 			"error": err,
 		}).Error("Error unmarshalling field map JSON")
@@ -622,12 +636,11 @@ func CheckPath(path string, o *gabs.Container) string {
 			return ""
 		}
 	}
-	Log.WithFields(logrus.Fields{"path": path}).Debug("Path not found in CheckPath")
 	return ""
 }
 
 //AddOrderItem will add the cv3 product data to the quickbooks return object
-func AddOrderItem(sku string, prod interface{}, item *gabs.Container, skus map[string]interface{}, workCTX *WorkCTX, itemFieldMap map[string]MappingObject) interface{} {
+func (orderAdd *SalesOrderAdd) AddOrderItem(sku string, prod interface{}, item *gabs.Container, skus map[string]interface{}, workCTX *WorkCTX, itemFieldMap map[string]MappingObject) interface{} {
 	//unmarshal into cv3 product, to add to workCTX list of products
 	var m = cv3go.Product{}
 	err := json.Unmarshal(item.Bytes(), &m)
@@ -672,6 +685,8 @@ func AddOrderItem(sku string, prod interface{}, item *gabs.Container, skus map[s
 	}
 	if itemFieldMap["Rate"].Display(item) != "" {
 		skus[sku].(*SalesOrderLineAdd).Rate = itemFieldMap["Rate"].Display(item)
+		//Calculate subtotal for use in discount calculations
+		orderAdd.DiscountCTX.SubTotal += ParseFloat(skus[sku].(*SalesOrderLineAdd).Rate) * ParseFloat(skus[sku].(*SalesOrderLineAdd).Quantity)
 	}
 	if itemFieldMap["RatePercent"].Display(item) != "" {
 		skus[sku].(*SalesOrderLineAdd).RatePercent = itemFieldMap["RatePercent"].Display(item)
@@ -716,7 +731,7 @@ func AddOrderItem(sku string, prod interface{}, item *gabs.Container, skus map[s
 }
 
 //AddReceiptItem will add the cv3 product data to the quickbooks return object
-func AddReceiptItem(sku string, prod interface{}, item *gabs.Container, skus map[string]interface{}, workCTX *WorkCTX, itemFieldMap map[string]MappingObject) interface{} {
+func (receiptAdd *SalesReceiptAdd) AddReceiptItem(sku string, prod interface{}, item *gabs.Container, skus map[string]interface{}, workCTX *WorkCTX, itemFieldMap map[string]MappingObject) interface{} {
 	//unmarshal into cv3 product, to add to workCTX list of products
 	var m = cv3go.Product{}
 	err := json.Unmarshal(item.Bytes(), &m)
@@ -755,6 +770,7 @@ func AddReceiptItem(sku string, prod interface{}, item *gabs.Container, skus map
 	}
 	if itemFieldMap["Rate"].Display(item) != "" {
 		skus[sku].(*SalesReceiptLineAdd).Rate = itemFieldMap["Rate"].Display(item)
+		receiptAdd.DiscountCTX.SubTotal += ParseFloat(skus[sku].(*SalesReceiptLineAdd).Rate) * ParseFloat(skus[sku].(*SalesReceiptLineAdd).Quantity)
 	}
 	if itemFieldMap["RatePercent"].Display(item) != "" {
 		skus[sku].(*SalesReceiptLineAdd).RatePercent = itemFieldMap["RatePercent"].Display(item)
@@ -801,46 +817,65 @@ func AddReceiptItem(sku string, prod interface{}, item *gabs.Container, skus map
 	if itemFieldMap["OverrideItemAccountRef.ListID"].Display(item) != "" {
 		skus[sku].(*SalesReceiptLineAdd).OverrideItemAccountRef.ListID = itemFieldMap["OverrideItemAccountRef.ListID"].Display(item)
 	}
+	//Add item to the sales receipt
+	//receiptAdd.SalesReceiptLineAdds = append(receiptAdd.SalesReceiptLineAdds, *skus[sku].(*SalesReceiptLineAdd))
 	//return salesReceiptLine item
 	return skus[sku].(*SalesReceiptLineAdd)
 }
 
 //AddDiscount Adds a discount line item when a totalOrderDiscount exists
 func (orderAdd *SalesOrderAdd) AddDiscount(o *gabs.Container, shipToIndex int) {
+	var orderDiscount = SalesOrderLineAdd{}
+	discountMap := ReadFieldMapping("./fieldMaps/discountOrderMapping.json")
 	if CheckPath("totalOrderDiscount.totalDiscount", o) != "" {
-		if shipToIndex == 0 {
-			var orderDiscount = SalesOrderLineAdd{}
-			discountMap := ReadFieldMapping("./fieldMaps/discountOrderMapping.json")
-			discountAmount, err := strconv.ParseFloat(CheckPath("totalOrderDiscount.totalDiscount", o), -1)
-			if err != nil {
-				fmt.Println(err)
+		if orderAdd.DiscountCTX.RemainingDiscount != 0.0 {
+			if orderAdd.DiscountCTX.RemainingDiscount <= orderAdd.DiscountCTX.SubTotal {
+				orderDiscount.ItemRef.FullName = discountMap["ItemRef.FullName"].Display()
+				orderDiscount.Quantity = discountMap["Quantity"].Display()
+				orderDiscount.SalesTaxCodeRef.FullName = discountMap["SalesTaxCodeRef"].Display()
+				orderDiscount.Rate = strconv.FormatFloat(0.0-orderAdd.DiscountCTX.RemainingDiscount, 'f', 2, 64)
+				orderAdd.DiscountCTX.RemainingDiscount = 0.0
+				orderAdd.SalesOrderLineAdds = append(orderAdd.SalesOrderLineAdds, orderDiscount)
+			} else {
+				//subtract this cv3 shipTo's subtotal from the remaining discount for use in next shipTo
+				orderAdd.DiscountCTX.RemainingDiscount = orderAdd.DiscountCTX.RemainingDiscount - orderAdd.DiscountCTX.SubTotal
+				orderDiscount.ItemRef.FullName = discountMap["ItemRef.FullName"].Display()
+				orderDiscount.Quantity = discountMap["Quantity"].Display()
+				orderDiscount.SalesTaxCodeRef.FullName = discountMap["SalesTaxCodeRef"].Display()
+				orderDiscount.Rate = strconv.FormatFloat(0.0-orderAdd.DiscountCTX.SubTotal, 'f', 2, 64)
+				orderAdd.SalesOrderLineAdds = append(orderAdd.SalesOrderLineAdds, orderDiscount)
 			}
-			orderDiscount.ItemRef.FullName = discountMap["ItemRef.FullName"].Display()
-			orderDiscount.Quantity = discountMap["Quantity"].Display()
-			orderDiscount.SalesTaxCodeRef.FullName = discountMap["SalesTaxCodeRef"].Display()
-			orderDiscount.Rate = strconv.FormatFloat(0.0-discountAmount, 'f', -1, 64)
-			orderAdd.SalesOrderLineAdds = append(orderAdd.SalesOrderLineAdds, orderDiscount)
 		}
 	}
 }
 
 //AddDiscount Adds a discount line item when a totalOrderDiscount exists
 func (receiptAdd *SalesReceiptAdd) AddDiscount(o *gabs.Container, shipToIndex int) {
+	var receiptDiscount = SalesReceiptLineAdd{}
+	discountMap := ReadFieldMapping("./fieldMaps/discountReceiptMapping.json")
+	//Check if there is a discount, then split it between cv3 shipTos if needed
 	if CheckPath("totalOrderDiscount.totalDiscount", o) != "" {
-		if shipToIndex == 0 {
-			var receiptDiscount = SalesReceiptLineAdd{}
-			discountMap := ReadFieldMapping("./fieldMaps/discountReceiptMapping.json")
-			discountAmount, err := strconv.ParseFloat(CheckPath("totalOrderDiscount.totalDiscount", o), -1)
-			if err != nil {
-				fmt.Println(err)
+		if receiptAdd.DiscountCTX.RemainingDiscount != 0.0 {
+			if receiptAdd.DiscountCTX.RemainingDiscount <= receiptAdd.DiscountCTX.SubTotal {
+				receiptDiscount.ClassRef.FullName = discountMap["ClassRef.FullName"].Display()
+				receiptDiscount.Desc = discountMap["Desc"].Display(o)
+				receiptDiscount.ItemRef.FullName = discountMap["ItemRef.FullName"].Display()
+				receiptDiscount.Quantity = discountMap["Quantity"].Display()
+				receiptDiscount.SalesTaxCodeRef.FullName = discountMap["SalesTaxCodeRef.FullName"].Display()
+				receiptDiscount.Rate = strconv.FormatFloat(0.0-receiptAdd.DiscountCTX.RemainingDiscount, 'f', 2, 64)
+				receiptAdd.DiscountCTX.RemainingDiscount = 0.0 //discount is used up, set it to zero
+				receiptAdd.SalesReceiptLineAdds = append(receiptAdd.SalesReceiptLineAdds, receiptDiscount)
+			} else { //remainingDiscount is greater than the subtotal of this cv3 shipTo / qbwc salesReceipt
+				//subtract this cv3 shipTo's subtotal from the remaining discount for use in next shipTo
+				receiptAdd.DiscountCTX.RemainingDiscount = receiptAdd.DiscountCTX.RemainingDiscount - receiptAdd.DiscountCTX.SubTotal
+				receiptDiscount.ClassRef.FullName = discountMap["ClassRef.FullName"].Display()
+				receiptDiscount.Desc = discountMap["Desc"].Display(o)
+				receiptDiscount.ItemRef.FullName = discountMap["ItemRef.FullName"].Display()
+				receiptDiscount.Quantity = discountMap["Quantity"].Display()
+				receiptDiscount.SalesTaxCodeRef.FullName = discountMap["SalesTaxCodeRef.FullName"].Display()
+				receiptDiscount.Rate = strconv.FormatFloat(0.0-receiptAdd.DiscountCTX.SubTotal, 'f', 2, 64)
+				receiptAdd.SalesReceiptLineAdds = append(receiptAdd.SalesReceiptLineAdds, receiptDiscount)
 			}
-			receiptDiscount.ClassRef.FullName = discountMap["ClassRef.FullName"].Display()
-			receiptDiscount.Desc = discountMap["Desc"].Display(o)
-			receiptDiscount.ItemRef.FullName = discountMap["ItemRef.FullName"].Display()
-			receiptDiscount.Quantity = discountMap["Quantity"].Display()
-			receiptDiscount.SalesTaxCodeRef.FullName = discountMap["SalesTaxCodeRef.FullName"].Display()
-			receiptDiscount.Rate = strconv.FormatFloat(0.0-discountAmount, 'f', -1, 64)
-			receiptAdd.SalesReceiptLineAdds = append(receiptAdd.SalesReceiptLineAdds, receiptDiscount)
 		}
 	}
 }
@@ -954,4 +989,18 @@ func (receiptAdd *SalesReceiptAdd) AddTax(o, shipTo *gabs.Container) {
 			taxItem.Amount = taxMap["Amount"].Display(shipTo)
 			receiptAdd.SalesReceiptLineAdds = append(receiptAdd.SalesReceiptLineAdds, taxItem)
 		}*/
+}
+
+//ParseFloat is a wrapper for strconv.ParseFloat, and will parse a string into a float
+func ParseFloat(s string) float64 {
+	var f float64
+	var err error
+	if s != "" {
+		f, err = strconv.ParseFloat(s, 64)
+		if err != nil {
+			Log.WithFields(logrus.Fields{"Error": err, "value": s}).Error("Error parsing float in add order")
+			ErrLog.WithFields(logrus.Fields{"Error": err, "value": s}).Error("Error parsing float in add order")
+		}
+	}
+	return f
 }
