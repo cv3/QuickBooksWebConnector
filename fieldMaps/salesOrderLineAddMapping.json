@@ -19,7 +19,7 @@
 	],
 	"Desc": [
 		{
-			"data": "Name",
+			"data": "",
 			"mappedField": true
 		}
 	],
@@ -55,7 +55,7 @@
 	],
 	"ItemRef.FullName": [
 		{
-			"data": "Name",
+			"data": "SKU",
 			"mappedField": true
 		}
 	],
@@ -109,7 +109,7 @@
 	],
 	"Rate": [
 		{
-			"data": "",
+			"data": "price",
 			"mappedField": true
 		}
 	],

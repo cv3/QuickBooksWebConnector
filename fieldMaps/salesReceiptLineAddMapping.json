@@ -49,7 +49,7 @@
 	],
 	"ItemRef.FullName": [
 		{
-			"data": "Name",
+			"data": "SKU",
 			"mappedField": true
 		}
 	],
@@ -109,13 +109,13 @@
 	],
 	"Quantity": [
 		{
-			"data": "",
+			"data": "quantity",
 			"mappedField": true
 		}
 	],
 	"Rate": [
 		{
-			"data": "",
+			"data": "price",
 			"mappedField": true
 		}
 	],

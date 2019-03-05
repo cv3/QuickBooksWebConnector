@@ -1,6 +1,8 @@
 package qbwcGo
 
-import "github.com/amazingfly/cv3go"
+import (
+	"github.com/amazingfly/cv3go"
+)
 
 //ConfirmCV3Order will let CV3 know the order information has been received
 func ConfirmCV3Order(orderID string) {

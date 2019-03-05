@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/TeamFairmont/gabs"
 	"github.com/amazingfly/cv3go"
+	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
 
 //CfgPath is the path to the config file, used first in qbwcServer.go then in SendAuthenticateResponse() to reload the config
@@ -38,9 +40,9 @@ var doneChan = make(chan bool)                   //signals sent from CloseConnec
 var getLastErrChan = make(chan string, 5)        //channel to send to the getLastError
 var waiting bool                                 //used in the NoOp holding pattern
 
-var shipToSuccessChan = make(chan ShipToSuccessTracker, 15) //sent from GetCV3Orders, to start tracking a shipTo
-var orderSuccessChan = make(chan OrderSuccessTracker, 15)   //sent from GetCV3Orders, to start tracking an order
-var confirmShipToChan = make(chan ShipToSuccessTracker, 15) //sent from SendReceiveResponseXML to confirm a shipTo has been successfully added to QuickBooks
+var shipToSuccessChan = make(chan ShipToSuccessTracker, 9999) //sent from GetCV3Orders, to start tracking a shipTo
+var orderSuccessChan = make(chan OrderSuccessTracker, 9999)   //sent from GetCV3Orders, to start tracking an order
+var confirmShipToChan = make(chan ShipToSuccessTracker, 9999) //sent from SendReceiveResponseXML to confirm a shipTo has been successfully added to QuickBooks
 
 //QBWCHandler is the only handler, to handle qbwc soap requests by switching on xml node names
 func QBWCHandler(w http.ResponseWriter, r *http.Request) {
@@ -64,6 +66,8 @@ func QBWCHandler(w http.ResponseWriter, r *http.Request) {
 	CheckNodes([]Node{xmlNode}, Node{}, func(node, parentNode Node) bool {
 		switch node.XMLName.Local {
 		case "authenticate": //Authenticate the given credentials, and start the session
+			//Initialize channels to make sure no old data remains
+			InitChannels()
 			SendAuthenticateResponse(parentNode, w)
 			return true //end recursive CheckNode
 		case "serverVersion": //Send this servers version information to QBWC
@@ -509,7 +513,16 @@ func InitLog() *logrus.Logger {
 
 //SetLogFile sets the file location to store the log
 func SetLogFile(path string, l *logrus.Logger) *logrus.Logger {
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0666)
+	lumberjackLogrotate := &lumberjack.Logger{
+		Filename:   path,
+		MaxSize:    50,
+		MaxBackups: 0,
+		MaxAge:     0,
+		Compress:   true,
+	}
+	logMultiWriter := io.MultiWriter(os.Stdout, lumberjackLogrotate)
+	l.Out = logMultiWriter
+	/*file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0666)
 	if err == nil {
 		l.Out = file
 		l.WithFields(logrus.Fields{"filepath": path}).Debug("logger set to use file")
@@ -517,7 +530,7 @@ func SetLogFile(path string, l *logrus.Logger) *logrus.Logger {
 		Log.WithFields(logrus.Fields{"error": err, "filepath": path}).Error("Failed to log to file")
 		ErrLog.WithFields(logrus.Fields{"error": err, "filepath": path}).Error("Failed to log to file")
 		getLastErrChan <- err.Error()
-	}
+	}*/
 	return l
 }
 
@@ -1033,15 +1046,20 @@ func CustomerAddRsHandler(parentNode Node, checkWork WorkCTX) {
 					var order = gabs.New()
 					var workCTX = WorkCTX{Attempted: checkWork.Attempted}
 					var workCount = 0
-					//Check the data int the config nameArrangement's last field
-					switch { //lowercase and check for the existance of first or last to allow for user error
-					case strings.Contains(strings.ToLower(cfg.NameArrangement.Last), "first"):
-						checkWork.Order.SetP(CheckPath("billing.firstName", checkWork.Order)+"Cust", "billing.firstName")
-						break
-					case strings.Contains(strings.ToLower(cfg.NameArrangement.Last), "last"):
-						checkWork.Order.SetP(CheckPath("billing.lastName", checkWork.Order)+"Cust", "billing.lastName")
-						break
-					}
+					var fieldMap = ReadFieldMapping("./fieldMaps/customerAddMapping.json")
+					//append cust to the end of the last section of the customer name, as designated in customerAddMapping, and put that into the gabs order object
+					checkWork.Order.SetP(CheckPath(fieldMap["Name"][len(fieldMap["Name"])-1].Data, checkWork.Order)+"Cust", fieldMap["Name"][len(fieldMap["Name"])-1].Data)
+					/*
+						//Check the data int the config nameArrangement's last field
+						switch { //lowercase and check for the existance of first or last to allow for user error
+						case strings.Contains(strings.ToLower(fieldMap["Name"][0]["data"], "first"):
+
+							checkWork.Order.SetP(CheckPath("billing.firstName", checkWork.Order)+"Cust", "billing.firstName")
+							break
+						case strings.Contains(strings.ToLower(cfg.NameArrangement.Last), "last"):
+							checkWork.Order.SetP(CheckPath("billing.lastName", checkWork.Order)+"Cust", "billing.lastName")
+							break
+						}*/
 					//Put order info inside a gabs object to be compatible with the MakeOrder or MakeReceipt functions
 					order.Set(checkWork.Order.Data(), "0")
 					if err != nil {
@@ -1173,4 +1191,16 @@ func ConvertCustomerMsgRef(s string) string {
 	converted = ConvertColonsToSpaces(converted)
 	converted = StripBlanksAndNewlines(converted)
 	return converted
+}
+
+//InitChannels Resets the go channels to prevent data being left in the buffers
+func InitChannels() {
+	shipToSuccessChan = make(chan ShipToSuccessTracker, 9999)
+	orderSuccessChan = make(chan OrderSuccessTracker, 9999)
+	confirmShipToChan = make(chan ShipToSuccessTracker, 9999)
+	workChan = make(chan WorkCTX, 5)
+	workInsertChan = make(chan WorkCTX, 5)
+	checkWorckChan = make(chan WorkCTX, 5)
+	checkWorckInsertChan = make(chan WorkCTX, 5)
+	getLastErrChan = make(chan string, 5)
 }

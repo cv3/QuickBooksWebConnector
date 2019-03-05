@@ -527,6 +527,7 @@ type SalesReceiptLineGroupAdd struct {
 	DataExt                  []DataExt  `xml:"DataExt"`
 }
 
+/*
 // BuildLineItems will take a *gabs.Container of CV3 items, itemFieldMap, skus a map of items to check, and mMap a map for keeping track of the used skus
 func (receipt *SalesReceiptAdd) BuildLineItems(item *gabs.Container, itemFieldMap map[string]MappingObject, skus map[string]interface{}, workCTX *WorkCTX) { //*SalesReceiptAdd {
 	var prod *SalesReceiptLineAdd
@@ -605,7 +606,7 @@ func (receipt *SalesReceiptAdd) BuildLineItems(item *gabs.Container, itemFieldMa
 		}
 	} //end else of attribute check
 }
-
+*/
 //MatchAttributeCombinations loops through all the returned attribute combinations, and matches them against what was sent in the order information.
 //This will return an int value to be compared with the length of attributes from the origional order information
 func MatchAttributeCombinations(at *gabs.Container, pAttributes map[string]string) int {
@@ -629,8 +630,18 @@ func MatchAttributeCombinations(at *gabs.Container, pAttributes map[string]strin
 	return attributeCombinationMatches
 }
 
+//DiscountCTX holds an orders discount contenxt
+type DiscountCTX struct {
+	Type              string
+	TotalDiscount     float64
+	Discount          float64
+	RemainingDiscount float64
+	SubTotal          float64
+}
+
 //SalesReceiptAdd is the struct for added sales receipts from cv3 to qb
 type SalesReceiptAdd struct {
+	DiscountCTX             *DiscountCTX
 	DefMacro                string            `xml:"defmacro,attr"`
 	CV3OrderID              string            //to keep track of order success
 	ShipToIndex             int               //to keep track of orders with multiple shiptos
@@ -673,6 +684,7 @@ type OrderOrReceiptAdd interface {
 	BuildLineItems()
 }
 
+/*
 // BuildLineItems will take a *gabs.Container of CV3 items, itemFieldMap, skus a map of items, checks for sub or attribute products and adds them to the SalesOrderAdd object
 func (order *SalesOrderAdd) BuildLineItems(item *gabs.Container, itemFieldMap map[string]MappingObject, skus map[string]interface{}, workCTX *WorkCTX) { //*SalesOrderAdd {
 	var prod *SalesOrderLineAdd
@@ -746,9 +758,10 @@ func (order *SalesOrderAdd) BuildLineItems(item *gabs.Container, itemFieldMap ma
 		}
 	} //end else of attribute check
 }
-
+*/
 //SalesOrderAdd is the struct to hold the variables for the qbxml call
 type SalesOrderAdd struct {
+	DiscountCTX             *DiscountCTX
 	DefMacro                string `xml:"defmacro,attr"`
 	CV3OrderID              string //to keep track of order success
 	ShipToIndex             int
