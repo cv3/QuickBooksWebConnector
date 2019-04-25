@@ -134,6 +134,9 @@ To enable verbose logging:
 Note about permissions to Intuit's log file:
   - All users running QBWC will need permission to write to C:\ProgramData\Intuit\QBWebConnector\log\QWCLog.txt
 
+#### CommerceV3 Passwords ####
+If the QuickBooks Web Connector suddenly stops working with an error regarding an invalid user or password, the most frequent issue is that the password to CommerceV3 has been changed or disabled.  The CommerceV3 store admin passwords require a change every 3 months.  Upon updating it at the website, update the qbwcConfig.json file's cv3Credentials pass field as described above, then close the qbwcServer process (it looks like a command prompt window), then restart it by double-clicking on qbwcServer.exe.  Do not change the password in the QuickBooks Web Connector GUI's Password field.
+
 ---
 
 ## Additional Instructions ##
