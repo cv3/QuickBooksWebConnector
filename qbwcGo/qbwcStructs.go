@@ -3,12 +3,88 @@ package qbwcGo
 import (
 	"bytes"
 	"encoding/xml"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/TeamFairmont/gabs"
 	"github.com/amazingfly/cv3go"
 )
 
+//MappingObject is the struct to hold all the information for a single field mapping
+type MappingObject []MapData
+
+//MapData is one piece of a mapping object
+type MapData struct {
+	Data        string                   `json:"data"`        //the cv3 field name or the data to be hardcoded
+	MappedField bool                     `json:"mappedField"` //indicates whether or not the data field is a hardcoded value or a cv3 field name
+	SubMappings map[string]MappingObject `json:"subMappings"` //used to map the value found from the top level mapping to yet another value
+}
+
+//Display will display the data in the MappingObject in its desired format
+func (mapObj MappingObject) Display(cv3Data ...*gabs.Container) string {
+	return RecursiveMapCheck(mapObj, cv3Data...)
+}
+
+//RecursiveMapCheck will traverse the recursive mapping objects and return data as a string
+func RecursiveMapCheck(mapObj MappingObject, cv3Data ...*gabs.Container) string {
+	var displayBuf = bytes.Buffer{}
+	//range over the map data elements to construct the desired string
+	for _, mData := range mapObj {
+		if mData.MappedField { //if this is a mapping
+			//range over all gabs.Containers passed in, to check field mappings
+			defaultFound := false
+			for cDataIndex, cData := range cv3Data {
+				data := CheckPath(mData.Data, cData) //get the mapped data from the gabs.Container
+
+				//if data != "" { //if the data is not nill
+				if len(mData.SubMappings) > 0 { //if the data has subMappings to be resolved
+					mObj, ok := mData.SubMappings[data] //get the desired mappingObject
+					if ok {
+						defaultFound = true
+						displayBuf.WriteString(RecursiveMapCheck(mObj, cv3Data...))
+					}
+					if data == "" && !defaultFound && cDataIndex+1 == len(cv3Data) { //displayBuf.String() == "" { //Check for a default mapping as the matching mapData not found or empty
+						for key, mObj := range mData.SubMappings {
+							if strings.ToLower(key) == "default" {
+								defaultFound = true
+								displayBuf.WriteString(RecursiveMapCheck(mObj, cv3Data...))
+							} // end if default
+						} //end range loop on subMappings
+					} //end else of OK
+					if displayBuf.String() == "" && data != "" { //if non of the submappings mapped to anything, add the origional data
+						defaultFound = true
+						displayBuf.WriteString(data)
+					}
+				} else { //if there is no subMapping
+					displayBuf.WriteString(CheckPath(mData.Data, cData))
+				}
+				//} //end if data != ""
+			} //end range loop on gabs.Containers
+		} else { //hardcoded value
+			if len(mData.SubMappings) > 0 { //if the data has subMappings to be resolved
+				mObj, ok := mData.SubMappings[mData.Data] //get the desired mappingObject
+				if ok {
+					displayBuf.WriteString(RecursiveMapCheck(mObj, cv3Data...))
+				}
+				if mData.Data == "" { //displayBuf.String() == "" { //Check for a default mapping as the matching mapData not found or empty
+					for key, mObj := range mData.SubMappings {
+						if strings.ToLower(key) == "default" {
+							displayBuf.WriteString(RecursiveMapCheck(mObj, cv3Data...))
+						} // end if default
+					} //end range loop on subMappings
+				} //end else of OK
+				if displayBuf.String() == "" { //if non of the submappings mapped to anything, add the origional data
+					displayBuf.WriteString(mData.Data)
+				}
+			} else { // if there are no subMappings
+				displayBuf.WriteString(mData.Data)
+			}
+		}
+	}
+	return displayBuf.String()
+}
+
+/*
 //MappingObject is the struct to hold all the information for a single field mapping
 type MappingObject []MapData
 
@@ -36,6 +112,7 @@ func (mapObj MappingObject) Display(cv3Data ...*gabs.Container) string {
 	}
 	return displayBuf.String()
 }
+*/
 
 //QBXMLWork is the slice of finished templates to be added to the top level template
 type QBXMLWork []string
@@ -607,6 +684,7 @@ func (receipt *SalesReceiptAdd) BuildLineItems(item *gabs.Container, itemFieldMa
 	} //end else of attribute check
 }
 */
+
 //MatchAttributeCombinations loops through all the returned attribute combinations, and matches them against what was sent in the order information.
 //This will return an int value to be compared with the length of attributes from the origional order information
 func MatchAttributeCombinations(at *gabs.Container, pAttributes map[string]string) int {
@@ -759,6 +837,7 @@ func (order *SalesOrderAdd) BuildLineItems(item *gabs.Container, itemFieldMap ma
 	} //end else of attribute check
 }
 */
+
 //SalesOrderAdd is the struct to hold the variables for the qbxml call
 type SalesOrderAdd struct {
 	DiscountCTX             *DiscountCTX
@@ -1207,3 +1286,194 @@ type DataExtAddRq struct {
 	//<!-- END OR -->
 	DataExtValue string `xml:"DataExtValue"`
 }
+
+//CustomerQueryRq is the struct to hold data for the customerQueryRq call
+type CustomerQueryRq struct {
+	XMLName            xml.Name            `xml:"CustomerQueryRq"`
+	MetaData           string              `xml:"metaData,attr,omitempty"`
+	Iterator           string              `xml:"iterator,attr,omitempty"`
+	IteratorID         string              `xml:"iteratorID,attr,omitempty"`
+	ListID             []string            `xml:"ListID,omitempty"`
+	FullName           []string            `xml:"FullName,omitempty"`
+	MaxReturned        int                 `xml:"MaxReturned,omitempty"`
+	ActiveStatus       string              `xml:"ActiveStatus,omitempty"` //ActiveStatus may have one of the following values: ActiveOnly [DEFAULT], InactiveOnly, All
+	FromModifiedDate   string              `xml:"FromModifiedDate,omitempty"`
+	ToModifiedDate     string              `xml:"ToModifiedDate,omitempty"`
+	NameFilter         *NameFilter         `xml:"NameFilter,omitempty"`
+	NameRangeFilter    *NameRangeFilter    `xml:"NameRangeFilter,omitempty"`
+	TotalBalanceFilter *TotalBalanceFilter `xml:"TotalBalanceFilter,omitempty"`
+	CurrencyFilter     *CurrencyFilter     `xml:"CurrencyFilter,omitempty"`
+	ClassFilter        *ClassFilter        `xml:"ClassFilte,omitempty"`
+	IncludeRetElement  []string            `xml:"IncludeRetElement,omitempty"`
+	OwnerID            []string            `xml:"OwnerID,omitempty"`
+}
+
+//TotalBalanceFilter is the struct to hold data for customer queries
+type TotalBalanceFilter struct {
+	Operator string `xml:"Operator,omitempty"` //Operator may have one of the following values: LessThan, LessThanEqual, Equal, GreaterThan, GreaterThanEqual
+	Amount   string `xml:"Amount,omitempty"`
+}
+
+//CurrencyFilter is the struct to hold data for customer queries
+type CurrencyFilter struct {
+	ListID   []string `xml:"ListID,omitempty"`
+	FullName []string `xml:"FullName,omitempty"`
+}
+
+//ClassFilter is the struct to hold data for customer quries
+type ClassFilter struct {
+	ListID               []string `xml:"ListID,omitempty"`
+	FullName             []string `xml:"FullName,omitempty"`
+	ListIDWithChildren   string   `xml:"ListIDWithChildren,omitempty"`
+	FullNameWithChildren string   `xml:"FullNameWithChildren,omitempty"`
+}
+
+//CustomerQueryRs aaa
+type CustomerQueryRs struct {
+	ResponseStatus
+	RetCount               int           `xml:"retCount,attr"`
+	IteratorRemainingCount int           `xml:"iteratorRemainingCount,attr"`
+	IteratorID             string        `xml:"iteratorID,attr"`
+	CustomerRet            []CustomerRet `xml:"CustomerRet"`
+}
+
+//CustomerRet is the struct to hold data for the customer query response
+type CustomerRet struct {
+	ListID                    string                 `xml:"ListID"`
+	TimeCreated               string                 `xml:"TimeCreated"`
+	TimeModified              string                 `xml:"TimeModified"`
+	EditSequence              string                 `xml:"EditSequence"`
+	Name                      string                 `xml:"Name"`
+	FullName                  string                 `xml:"FullName"`
+	IsActive                  string                 `xml:"IsActive"`
+	ClassRef                  AccountRef             `xml:"ClassRef"`
+	ParentRef                 AccountRef             `xml:"ParentRef"`
+	Sublevel                  string                 `xml:"Sublevel"`
+	CompanyName               string                 `xml:"CompanyName"`
+	Salutation                string                 `xml:"Salutation"`
+	FirstName                 string                 `xml:"FirstName"`
+	MiddleName                string                 `xml:"MiddleName"`
+	LastName                  string                 `xml:"LastName"`
+	JobTitle                  string                 `xml:"JobTitle"`
+	BillAddress               Address                `xml:"BillAddress"`
+	BillAddressBlock          Address                `xml:"BillAddressBlock"`
+	ShipAddress               Address                `xml:"ShipAddress"`
+	ShipAddressBlock          Address                `xml:"ShipAddressBlock"`
+	ShipToAddress             []QBShipToAddress      `xml:"ShipToAddress"`
+	Phone                     string                 `xml:"Phone"`
+	AltPhone                  string                 `xml:"AltPhone"`
+	Fax                       string                 `xml:"Fax"`
+	Email                     string                 `xml:"Email"`
+	CC                        string                 `xml:"Cc"`
+	Contact                   string                 `xml:"Contact"`
+	AltContact                string                 `xml:"AltContact"`
+	AdditionalContactRef      []AdditionalContactRef `xml:"AdditionalContactRef"`
+	ContactsRet               []ContactsRet          `xml:"ContactsRet"`
+	CustomerTypeRef           AccountRef             `xml:"CustomerTypeRef"`
+	TermsRef                  AccountRef             `xml:"TermsRef"`
+	SalesRepRef               AccountRef             `xml:"SalesRepRef"`
+	Balance                   string                 `xml:"Balance"`
+	TotalBalance              string                 `xml:"TotalBalance"`
+	SalesTaxCodeRef           AccountRef             `xml:"SalesTaxCodeRef"`
+	ItemSalesTaxRef           AccountRef             `xml:"ItemSalesTaxRef"`
+	ResaleNumber              string                 `xml:"ResaleNumber"`
+	AccountNumber             string                 `xml:"AccountNumber"`
+	CreditLimit               string                 `xml:"CreditLimit"`
+	PreferredPaymentMethodRef AccountRef             `xml:"PreferredPaymentMethodRef"`
+	CreditCardInfo            CreditCardInfo         `xml:"CreditCardInfo"`
+}
+
+//ContactsRet is the struct to hold data for customer query responses
+type ContactsRet struct {
+	ListID               string                 `xml:"ListID"`
+	TimeCreated          string                 `xml:"TimeCreated"`
+	TimeModified         string                 `xml:"TimeModified"`
+	EditSequence         string                 `xml:"EditSequence"`
+	Contact              string                 `xml:"Contact"`
+	Salutation           string                 `xml:"Salutation"`
+	FirstName            string                 `xml:"FirstName"`
+	MiddleName           string                 `xml:"MiddleName"`
+	LastName             string                 `xml:"LastName"`
+	JobTitle             string                 `xml:"JobTitle"`
+	AdditionalContactRef []AdditionalContactRef `xml:"AdditionalContactRef"`
+}
+
+/*
+        <CreditCardInfo>
+            <!-- optional -->
+            <CreditCardNumber>STRTYPE</CreditCardNumber>
+            <!-- optional -->
+            <ExpirationMonth>INTTYPE</ExpirationMonth>
+            <!-- optional -->
+            <ExpirationYear>INTTYPE</ExpirationYear>
+            <!-- optional -->
+            <NameOnCard>STRTYPE</NameOnCard>
+            <!-- optional -->
+            <CreditCardAddress>STRTYPE</CreditCardAddress>
+            <!-- optional -->
+            <CreditCardPostalCode>STRTYPE</CreditCardPostalCode>
+            <!-- optional -->
+        </CreditCardInfo>
+        <!-- JobStatus may have one of the following values: Awarded, Closed, InProgress, None [DEFAULT], NotAwarded, Pending -->
+        <JobStatus>ENUMTYPE</JobStatus>
+        <!-- optional -->
+        <JobStartDate>DATETYPE</JobStartDate>
+        <!-- optional -->
+        <JobProjectedEndDate>DATETYPE</JobProjectedEndDate>
+        <!-- optional -->
+        <JobEndDate>DATETYPE</JobEndDate>
+        <!-- optional -->
+        <JobDesc>STRTYPE</JobDesc>
+        <!-- optional -->
+        <JobTypeRef>
+            <!-- optional -->
+            <ListID>IDTYPE</ListID>
+            <!-- optional -->
+            <FullName>STRTYPE</FullName>
+            <!-- optional -->
+        </JobTypeRef>
+        <Notes>STRTYPE</Notes>
+        <!-- optional -->
+        <AdditionalNotesRet>
+            <!-- optional, may repeat -->
+            <NoteID>INTTYPE</NoteID>
+            <!-- required -->
+            <Date>DATETYPE</Date>
+            <!-- required -->
+            <Note>STRTYPE</Note>
+            <!-- required -->
+        </AdditionalNotesRet>
+        <!-- PreferredDeliveryMethod may have one of the following values: None [Default], Email, Fax -->
+        <PreferredDeliveryMethod>ENUMTYPE</PreferredDeliveryMethod>
+        <!-- optional -->
+        <PriceLevelRef>
+            <!-- optional -->
+            <ListID>IDTYPE</ListID>
+            <!-- optional -->
+            <FullName>STRTYPE</FullName>
+            <!-- optional -->
+        </PriceLevelRef>
+        <ExternalGUID>GUIDTYPE</ExternalGUID>
+        <!-- optional -->
+        <CurrencyRef>
+            <!-- optional -->
+            <ListID>IDTYPE</ListID>
+            <!-- optional -->
+            <FullName>STRTYPE</FullName>
+            <!-- optional -->
+        </CurrencyRef>
+        <DataExtRet>
+            <!-- optional, may repeat -->
+            <OwnerID>GUIDTYPE</OwnerID>
+            <!-- optional -->
+            <DataExtName>STRTYPE</DataExtName>
+            <!-- required -->
+            <!-- DataExtType may have one of the following values: AMTTYPE, DATETIMETYPE, INTTYPE, PERCENTTYPE, PRICETYPE, QUANTYPE, STR1024TYPE, STR255TYPE -->
+            <DataExtType>ENUMTYPE</DataExtType>
+            <!-- required -->
+            <DataExtValue>STRTYPE</DataExtValue>
+            <!-- required -->
+        </DataExtRet>
+    </CustomerRet>
+</CustomerQueryRs>
+*/

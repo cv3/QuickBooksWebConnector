@@ -152,6 +152,9 @@ func SendReceiveResponseXMLResponse(parentNode Node, w http.ResponseWriter) {
 		//Find the ItemQueryRs node
 		CheckNodes([]Node{responseNode}, Node{}, func(node, parentNode Node) bool {
 			switch node.XMLName.Local {
+			case "CustomerQueryRs":
+				CustomerQueryRsHandler(parentNode, checkWork)
+				return false // end recursive CheckNode
 			case "SalesOrderAddRs":
 				SalesOrderAddRsHandler(parentNode, checkWork)
 				return false // end recursive CheckNode
@@ -475,6 +478,8 @@ func InitWork() {
 		go QBItemQuery()
 		Log.WithFields(logrus.Fields{"UpdateCV3Items": cfg.ItemUpdates.UpdateCV3Items}).Info("Updating CV3 items from Quick Books")
 	} //else config set to not update cv3 items from QB
+	//TODO
+	//go CustomerQueryQB()
 	go GetCV3Orders()
 	//go AddTestItemsToQB()
 }
@@ -704,6 +709,46 @@ func StartOrderTracker() {
 				}).Error("Quick Books did not import the order successfully")
 			}
 			return //end go routine
+		}
+	}
+}
+
+//CustomerQueryRsHandler is used in SendResponseXML to handle a CustomerQueryRs
+func CustomerQueryRsHandler(parentNode Node, checkWork WorkCTX) {
+
+	cv3go.PrintToFile(parentNode.Content, "./customerQueryRs.xml") //TODO
+	var customerQueryRs = CustomerQueryRs{}
+	//Unmarshal the CustomerAddRs xml into the proper struct
+	err := xml.Unmarshal(parentNode.Content, &customerQueryRs)
+	if err != nil {
+		Log.WithFields(logrus.Fields{"error": err}).Error("Error unmarshalling CustomerQueryRs")
+		ErrLog.WithFields(logrus.Fields{"error": err}).Error("Error unmarshalling CustomerQueryRs")
+		getLastErrChan <- err.Error()
+	} else {
+		switch customerQueryRs.StatusCode {
+		case "0":
+			Log.WithFields(logrus.Fields{
+				"Status Severity": customerQueryRs.StatusSeverity,
+				"message":         customerQueryRs.StatusMessage,
+				"Status Code":     customerQueryRs.StatusCode,
+			}).Info("customerQueryRs in")
+			//TODO math with customers email
+			for _, cust := range customerQueryRs.CustomerRet {
+				_ = cust
+				//if cust.Email = checkWork.
+			}
+			break
+		default:
+			Log.WithFields(logrus.Fields{
+				"Status Severity": customerQueryRs.StatusSeverity,
+				"message":         customerQueryRs.StatusMessage,
+				"Status Code":     customerQueryRs.StatusCode,
+			}).Error("Error in customerQueryRs")
+			ErrLog.WithFields(logrus.Fields{
+				"Status Severity": customerQueryRs.StatusSeverity,
+				"message":         customerQueryRs.StatusMessage,
+				"Status Code":     customerQueryRs.StatusCode,
+			}).Error("Error in customerQueryRs")
 		}
 	}
 }
@@ -1049,17 +1094,7 @@ func CustomerAddRsHandler(parentNode Node, checkWork WorkCTX) {
 					var fieldMap = ReadFieldMapping("./fieldMaps/customerAddMapping.json")
 					//append cust to the end of the last section of the customer name, as designated in customerAddMapping, and put that into the gabs order object
 					checkWork.Order.SetP(CheckPath(fieldMap["Name"][len(fieldMap["Name"])-1].Data, checkWork.Order)+"Cust", fieldMap["Name"][len(fieldMap["Name"])-1].Data)
-					/*
-						//Check the data int the config nameArrangement's last field
-						switch { //lowercase and check for the existance of first or last to allow for user error
-						case strings.Contains(strings.ToLower(fieldMap["Name"][0]["data"], "first"):
 
-							checkWork.Order.SetP(CheckPath("billing.firstName", checkWork.Order)+"Cust", "billing.firstName")
-							break
-						case strings.Contains(strings.ToLower(cfg.NameArrangement.Last), "last"):
-							checkWork.Order.SetP(CheckPath("billing.lastName", checkWork.Order)+"Cust", "billing.lastName")
-							break
-						}*/
 					//Put order info inside a gabs object to be compatible with the MakeOrder or MakeReceipt functions
 					order.Set(checkWork.Order.Data(), "0")
 					if err != nil {

@@ -445,10 +445,10 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 					s = append(s, CheckPath("SKU", prod))
 					var temp = &SalesOrderLineAdd{} //SalesReceiptPart{}
 					//these variables must be set from the shipToProducts
-					tempInterface := qbOrderAdd.AddOrderItem("sku", temp, prod, skus, &WorkCTX{}, shipToProductFieldMap)
+					tempInterface := qbOrderAdd.AddOrderItem("sku", temp, prod, o, skus, &WorkCTX{}, shipToProductFieldMap)
 					temp = tempInterface.(*SalesOrderLineAdd)
 
-					temp.SalesTaxCodeRef.FullName = "Tax"
+					//temp.SalesTaxCodeRef.FullName = "Tax"
 					skus[CheckPath("SKU", prod)] = temp
 
 					qbOrderAdd.SalesOrderLineAdds = append(qbOrderAdd.SalesOrderLineAdds, *temp)
@@ -506,6 +506,8 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 				Index:   shipToIndex,
 				OrderID: qbOrderAdd.CV3OrderID,
 			}
+			Log.WithFields(logrus.Fields{"non escaped xml request": templateBuff.String()}).Debug("logging non escaped xml")
+			Log.WithFields(logrus.Fields{"xml request": escapedQBXML.String()}).Debug("Logging full xml request")
 			templateBuff.Reset()
 			escapedQBXML.Reset()
 		}
@@ -640,7 +642,7 @@ func CheckPath(path string, o *gabs.Container) string {
 }
 
 //AddOrderItem will add the cv3 product data to the quickbooks return object
-func (orderAdd *SalesOrderAdd) AddOrderItem(sku string, prod interface{}, item *gabs.Container, skus map[string]interface{}, workCTX *WorkCTX, itemFieldMap map[string]MappingObject) interface{} {
+func (orderAdd *SalesOrderAdd) AddOrderItem(sku string, prod interface{}, item, o *gabs.Container, skus map[string]interface{}, workCTX *WorkCTX, itemFieldMap map[string]MappingObject) interface{} {
 	//unmarshal into cv3 product, to add to workCTX list of products
 	var m = cv3go.Product{}
 	err := json.Unmarshal(item.Bytes(), &m)
@@ -718,11 +720,12 @@ func (orderAdd *SalesOrderAdd) AddOrderItem(sku string, prod interface{}, item *
 	if itemFieldMap["LotNumber"].Display(item) != "" {
 		skus[sku].(*SalesOrderLineAdd).LotNumber = itemFieldMap["LotNumber"].Display(item)
 	}
-	if itemFieldMap["SalesTaxCodeRef.FullName"].Display(item) != "" {
-		skus[sku].(*SalesOrderLineAdd).SalesTaxCodeRef.FullName = itemFieldMap["SalesTaxCodeRef.FullName"].Display(item)
+	if itemFieldMap["SalesTaxCodeRef.FullName"].Display(item, o) != "" {
+		Log.WithFields(logrus.Fields{"SalesTaxCodeRef.FullName": itemFieldMap["SalesTaxCodeRef.FullName"].Display(item, o)}).Debug("logging the salesTaxCodeRef.FullName from mapping")
+		skus[sku].(*SalesOrderLineAdd).SalesTaxCodeRef.FullName = itemFieldMap["SalesTaxCodeRef.FullName"].Display(item, o)
 	}
-	if itemFieldMap["SalesTaxCodeRef.ListID"].Display(item) != "" {
-		skus[sku].(*SalesOrderLineAdd).SalesTaxCodeRef.ListID = itemFieldMap["SalesTaxCodeRef.ListID"].Display(item)
+	if itemFieldMap["SalesTaxCodeRef.ListID"].Display(item, o) != "" {
+		skus[sku].(*SalesOrderLineAdd).SalesTaxCodeRef.ListID = itemFieldMap["SalesTaxCodeRef.ListID"].Display(item, o)
 	}
 	if itemFieldMap["IsManuallyClosed"].Display(item) != "" {
 		skus[sku].(*SalesOrderLineAdd).IsManuallyClosed = itemFieldMap["IsManuallyClosed"].Display(item)
@@ -954,7 +957,8 @@ func (orderAdd *SalesOrderAdd) AddTax(o, shipTo *gabs.Container) {
 		Log.WithFields(logrus.Fields{"Error": err}).Error("Error parsing tax in SalesReceiptAdd")
 		ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error parsing tax in SalesReceiptAdd")
 	}
-	if taxFloat > 0 {
+	ErrLog.WithFields(logrus.Fields{"orderAdd.ItemSalesTaxRef.FullName": orderAdd.ItemSalesTaxRef.FullName}).Error("Logging for troubleshoting")
+	if taxFloat > 0 && orderAdd.ItemSalesTaxRef.FullName == "" {
 		stateTaxDict := ReadDictFile("./fieldMaps/stateTaxMapping.json")
 		orderAdd.ItemSalesTaxRef.FullName = stateTaxDict[CheckPath("billing.state", o)]
 	}
