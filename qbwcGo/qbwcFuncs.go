@@ -39,6 +39,9 @@ var checkWorckInsertChan = make(chan WorkCTX, 5) //same as checkWorkChan, but fo
 var doneChan = make(chan bool)                   //signals sent from CloseConnection so the order tracking go routine, it is done.
 var getLastErrChan = make(chan string, 5)        //channel to send to the getLastError
 var waiting bool                                 //used in the NoOp holding pattern
+var customerQueryResponseChan = make(chan CustomerQueryRs, 0)
+var customerMsgQueryResponseChan = make(chan CustomerMsgQueryRs, 0)
+var customerModResponseChan = make(chan CustomerModRs, 0)
 
 var shipToSuccessChan = make(chan ShipToSuccessTracker, 9999) //sent from GetCV3Orders, to start tracking a shipTo
 var orderSuccessChan = make(chan OrderSuccessTracker, 9999)   //sent from GetCV3Orders, to start tracking an order
@@ -53,7 +56,7 @@ func QBWCHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		Log.WithFields(logrus.Fields{"error": err}).Error("Error reading incoming message body")
 		ErrLog.WithFields(logrus.Fields{"error": err}).Error("Error reading incoming message body")
-		getLastErrChan <- err.Error()
+		getLastErrChan <- "Error reading incoming message body" + err.Error()
 	}
 	var xmlNode = Node{}                //Struct to hold xml data,
 	err = xml.Unmarshal(body, &xmlNode) // unmarshal xml into node struct
@@ -154,6 +157,12 @@ func SendReceiveResponseXMLResponse(parentNode Node, w http.ResponseWriter) {
 			switch node.XMLName.Local {
 			case "CustomerQueryRs":
 				CustomerQueryRsHandler(parentNode, checkWork)
+				return false // end recursive CheckNode
+			case "CustomerMsgQueryRs":
+				CustomerMsgQueryRsHandler(parentNode, checkWork)
+				return false // end recursive CheckNode
+			case "CustomerModRs":
+				CustomerModRsHandler(parentNode, checkWork)
 				return false // end recursive CheckNode
 			case "SalesOrderAddRs":
 				SalesOrderAddRsHandler(parentNode, checkWork)
@@ -713,10 +722,70 @@ func StartOrderTracker() {
 	}
 }
 
+//CustomerModRsHandler is used in SendResponseXML to handle a CustomerModRs
+func CustomerModRsHandler(parentNode Node, checkWork WorkCTX) {
+	var customerModRs = CustomerModRs{}
+	//Unmarshal the CustomerModRs xml into the proper struct
+	err := xml.Unmarshal(parentNode.Content, &customerModRs)
+	if err != nil {
+		Log.WithFields(logrus.Fields{"error": err}).Error("Error unmarshalling CustomerModRs")
+		ErrLog.WithFields(logrus.Fields{"error": err}).Error("Error unmarshalling CustomerModRs")
+		getLastErrChan <- err.Error()
+	} else {
+		switch customerModRs.StatusCode {
+		case "0":
+			Log.WithFields(logrus.Fields{
+				"Status Severity": customerModRs.StatusSeverity,
+				"message":         customerModRs.StatusMessage,
+				"Status Code":     customerModRs.StatusCode,
+			}).Info("customerModRs in")
+
+			//Send customer mod response back to CustomerModQB{}
+			customerModResponseChan <- customerModRs
+			break
+		case "3170":
+			Log.WithFields(logrus.Fields{
+				"Status Severity": customerModRs.StatusSeverity,
+				"message":         customerModRs.StatusMessage,
+				"Status Code":     customerModRs.StatusCode,
+				"attempts":        checkWork.Attempted,
+			}).Error("Error 3170 in customerModRs, resending")
+			ErrLog.WithFields(logrus.Fields{
+				"Status Severity": customerModRs.StatusSeverity,
+				"message":         customerModRs.StatusMessage,
+				"Status Code":     customerModRs.StatusCode,
+				"attempts":        checkWork.Attempted,
+			}).Error("Error 3170 in customerModRs, resending")
+			if checkWork.Attempted < cfg.MaxWorkAttempts {
+				checkWork.Attempted++
+				workChan <- checkWork
+			} else { //send the work anyhow and let it fail
+				customerModResponseChan <- customerModRs
+			}
+		default:
+			Log.WithFields(logrus.Fields{
+				"Status Severity": customerModRs.StatusSeverity,
+				"message":         customerModRs.StatusMessage,
+				"Status Code":     customerModRs.StatusCode,
+			}).Error("Error in customerModRs")
+			ErrLog.WithFields(logrus.Fields{
+				"Status Severity": customerModRs.StatusSeverity,
+				"message":         customerModRs.StatusMessage,
+				"Status Code":     customerModRs.StatusCode,
+			}).Error("Error in customerModRs")
+			if checkWork.Attempted < cfg.MaxWorkAttempts {
+				checkWork.Attempted++
+				workChan <- checkWork
+			} else { //send the work anyhow and let if fail
+				customerModResponseChan <- customerModRs
+			}
+		}
+	}
+}
+
 //CustomerQueryRsHandler is used in SendResponseXML to handle a CustomerQueryRs
 func CustomerQueryRsHandler(parentNode Node, checkWork WorkCTX) {
 
-	cv3go.PrintToFile(parentNode.Content, "./customerQueryRs.xml") //TODO
 	var customerQueryRs = CustomerQueryRs{}
 	//Unmarshal the CustomerAddRs xml into the proper struct
 	err := xml.Unmarshal(parentNode.Content, &customerQueryRs)
@@ -732,11 +801,19 @@ func CustomerQueryRsHandler(parentNode Node, checkWork WorkCTX) {
 				"message":         customerQueryRs.StatusMessage,
 				"Status Code":     customerQueryRs.StatusCode,
 			}).Info("customerQueryRs in")
-			//TODO math with customers email
-			for _, cust := range customerQueryRs.CustomerRet {
-				_ = cust
-				//if cust.Email = checkWork.
-			}
+
+			//Send customer query response back to CustomerQueryQB{}
+			customerQueryResponseChan <- customerQueryRs
+			break
+		case "1":
+			Log.WithFields(logrus.Fields{
+				"Status Severity": customerQueryRs.StatusSeverity,
+				"message":         customerQueryRs.StatusMessage,
+				"Status Code":     customerQueryRs.StatusCode,
+			}).Info("customerQueryRs in")
+
+			//Send customer query response back to CustomerQueryQB{}
+			customerQueryResponseChan <- customerQueryRs
 			break
 		default:
 			Log.WithFields(logrus.Fields{
@@ -749,7 +826,35 @@ func CustomerQueryRsHandler(parentNode Node, checkWork WorkCTX) {
 				"message":         customerQueryRs.StatusMessage,
 				"Status Code":     customerQueryRs.StatusCode,
 			}).Error("Error in customerQueryRs")
+			if checkWork.Attempted < cfg.MaxWorkAttempts {
+				checkWork.Attempted++
+				workChan <- checkWork
+			} else { //send the work anyhow and let if fail
+				customerQueryResponseChan <- customerQueryRs
+			}
 		}
+	}
+}
+
+//CustomerMsgQueryRsHandler is used in SendResponseXML to handle a CustomerMsgQueryRs
+func CustomerMsgQueryRsHandler(parentNode Node, checkWork WorkCTX) {
+
+	var customerMsgQueryRs = CustomerMsgQueryRs{}
+	//Unmarshal the CustomerAddRs xml into the proper struct
+	err := xml.Unmarshal(parentNode.Content, &customerMsgQueryRs)
+	if err != nil {
+		Log.WithFields(logrus.Fields{"error": err}).Error("Error unmarshalling CustomerMsgQueryRs")
+		ErrLog.WithFields(logrus.Fields{"error": err}).Error("Error unmarshalling CustomerMsgQueryRs")
+		getLastErrChan <- err.Error()
+	} else {
+		Log.WithFields(logrus.Fields{
+			"Status Severity": customerMsgQueryRs.StatusSeverity,
+			"message":         customerMsgQueryRs.StatusMessage,
+			"Status Code":     customerMsgQueryRs.StatusCode,
+		}).Info("customerMsgQueryRs in")
+
+		//Send customer message query response back to CustomerMsgQueryQB{}
+		customerMsgQueryResponseChan <- customerMsgQueryRs
 	}
 }
 
@@ -792,22 +897,6 @@ func SalesOrderAddRsHandler(parentNode Node, checkWork WorkCTX) {
 				"Status Code":     salesOrderAddRs.StatusCode,
 			}).Error("SalesOrderAddRs error 3140, items not in Quick Books")
 
-			//Check error message to see what feild had errors
-			switch { //check for CustomerMsg first to avoid a false positive with Customer
-			case strings.Contains(salesOrderAddRs.StatusMessage, "CustomerMsg"):
-				Log.Debug("CustomerMsg not found, attempting to add new customerMsg to Quickbooks")
-				go CustomerMsgAddQB(checkWork)
-				break
-			case strings.Contains(salesOrderAddRs.StatusMessage, "Customer"):
-				Log.Debug("Customer not found, attempting to add new customer to Quickbooks")
-				if cfg.MaxWorkAttempts-checkWork.Attempted > 0 {
-					go CustomerAddQB(checkWork)
-				} else {
-					Log.WithFields(logrus.Fields{"OrderID": CheckPath("orderID", checkWork.Order)}).Error("Maximum number of attempts to add this salesReceipt has been exceeded")
-					ErrLog.WithFields(logrus.Fields{"OrderID": CheckPath("orderID", checkWork.Order)}).Error("Maximum number of attempts to add this salesReceipt has been exceeded")
-				}
-				break
-			}
 			go func() {
 				confirmShipToChan <- ShipToSuccessTracker{
 					Index:          checkWork.Data.(SalesOrderAdd).ShipToIndex,
@@ -916,22 +1005,6 @@ func SalesReceiptAddRsHandler(parentNode Node, checkWork WorkCTX) {
 				"Status Code":     salesReceiptAddRs.StatusCode,
 			}).Error("SalesReceiptAddRs error 3140, Account Ref not in Quick Books")
 
-			//Check error message to see what feild had errors
-			switch { //check for CustomerMsg first to avoid a false positive with Customer
-			case strings.Contains(salesReceiptAddRs.StatusMessage, "CustomerMsg"):
-				Log.Debug("CustomerMsg not found, attempting to add new customerMsg to Quickbooks")
-				go CustomerMsgAddQB(checkWork)
-				break
-			case strings.Contains(salesReceiptAddRs.StatusMessage, "Customer"):
-				Log.Debug("Customer not found, attempting to add new customer to Quickbooks")
-				if cfg.MaxWorkAttempts-checkWork.Attempted > 0 {
-					go CustomerAddQB(checkWork)
-				} else {
-					Log.WithFields(logrus.Fields{"OrderID": CheckPath("orderID", checkWork.Order)}).Error("Maximum number of attempts to add this salesReceipt has been exceeded")
-					ErrLog.WithFields(logrus.Fields{"OrderID": CheckPath("orderID", checkWork.Order)}).Error("Maximum number of attempts to add this salesReceipt has been exceeded")
-				}
-				break
-			}
 			go func() {
 				confirmShipToChan <- ShipToSuccessTracker{
 					Index:          checkWork.Data.(SalesReceiptAdd).ShipToIndex,
@@ -1238,4 +1311,5 @@ func InitChannels() {
 	checkWorckChan = make(chan WorkCTX, 5)
 	checkWorckInsertChan = make(chan WorkCTX, 5)
 	getLastErrChan = make(chan string, 5)
+	globalSession = SessionCTX{}
 }

@@ -109,37 +109,37 @@
 	],
 	"CreditCardInfo.CreditCardAddress": [
 		{
-			"data": "",
+			"data": "billing.address1",
 			"mappedField": true
 		}
 	],
 	"CreditCardInfo.CreditCardNumber": [
 		{
-			"data": "",
+			"data": "billing.CCInfo.CCNum",
 			"mappedField": true
 		}
 	],
 	"CreditCardInfo.CreditCardPostalCode": [
 		{
-			"data": "",
+			"data": "billing.zip",
 			"mappedField": true
 		}
 	],
 	"CreditCardInfo.ExpirationMonth": [
 		{
-			"data": "",
+			"data": "billing.CCInfo.CCExpM",
 			"mappedField": true
 		}
 	],
 	"CreditCardInfo.ExpirationYear": [
 		{
-			"data": "",
+			"data": "billing.CCInfo.CCExpY",
 			"mappedField": true
 		}
 	],
 	"CreditCardInfo.NameOnCard": [
 		{
-			"data": "",
+			"data": "billing.CCInfo.CCName",
 			"mappedField": true
 		}
 	],

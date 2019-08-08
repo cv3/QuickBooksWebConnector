@@ -22,7 +22,7 @@ type MapData struct {
 
 //Display will display the data in the MappingObject in its desired format
 func (mapObj MappingObject) Display(cv3Data ...*gabs.Container) string {
-	return RecursiveMapCheck(mapObj, cv3Data...)
+	return RecursiveMapCheck(mapObj, cv3Data...) //strings.TrimSpace(RecursiveMapCheck(mapObj, cv3Data...))
 }
 
 //RecursiveMapCheck will traverse the recursive mapping objects and return data as a string
@@ -34,7 +34,7 @@ func RecursiveMapCheck(mapObj MappingObject, cv3Data ...*gabs.Container) string 
 			//range over all gabs.Containers passed in, to check field mappings
 			defaultFound := false
 			for cDataIndex, cData := range cv3Data {
-				data := CheckPath(mData.Data, cData) //get the mapped data from the gabs.Container
+				data := strings.TrimSpace(CheckPath(mData.Data, cData)) //get the mapped data from the gabs.Container
 
 				//if data != "" { //if the data is not nill
 				if len(mData.SubMappings) > 0 { //if the data has subMappings to be resolved
@@ -56,7 +56,7 @@ func RecursiveMapCheck(mapObj MappingObject, cv3Data ...*gabs.Container) string 
 						displayBuf.WriteString(data)
 					}
 				} else { //if there is no subMapping
-					displayBuf.WriteString(CheckPath(mData.Data, cData))
+					displayBuf.WriteString(data) //CheckPath(mData.Data, cData))
 				}
 				//} //end if data != ""
 			} //end range loop on gabs.Containers
@@ -131,11 +131,12 @@ type WorkCTX struct {
 	Work      string //holds the excaped qbxml
 	DataExts  []DataExtAddRq
 	//TODO refactor Data to not be confused with DataExt
-	Data        interface{}     //holds the struct that created the qbxml
-	Order       *gabs.Container //holds the origional order information
-	CV3Products []cv3go.Product //holds the cv3 products used to make the qbxml
-	Type        string          //type of qbxml request
-	NoCustomer  bool            //set to true if there are problems with adding a customer name
+	Data          interface{}     //holds the struct that created the qbxml
+	Order         *gabs.Container //holds the origional order information
+	CV3Products   []cv3go.Product //holds the cv3 products used to make the qbxml
+	Type          string          //type of qbxml request
+	NoCustomer    bool            //set to true if there are problems with adding a customer name
+	NoResendOrder bool            //used to teell CustomerAdd to not resent the order
 }
 
 //ItemGroupLine is a piece of the ItemGroupRet
@@ -281,8 +282,8 @@ type SalesOrPurchase struct {
 
 //AccountRef Income, Expense, child of QBXML Items
 type AccountRef struct {
-	ListID   string `xml:"ListID"`
-	FullName string `xml:"FullName"`
+	ListID   string `xml:"ListID,omitempty"`
+	FullName string `xml:"FullName,omitempty"`
 }
 
 //SalesAndPurchase is the struct for the QBXML return item node SalesAndPurchase
@@ -493,16 +494,18 @@ type AuthReturn struct {
 
 //Address holds the billing addressss
 type Address struct {
-	Addr1      string `xml:"Addr1"`
-	Addr2      string `xml:"Addr2,omitempty"`
-	Addr3      string `xml:"Addr3,omitempty"`
-	Addr4      string `xml:"Addr4,omitempty"`
-	Addr5      string `xml:"Addr5,omitempty"`
-	City       string `xml:"City"`
-	State      string `xml:"State"`
-	PostalCode string `xml:"PostalCode"`
-	Country    string `xml:"Country"`
-	Note       string `xml:"Note,omitempty"`
+	Name          string `xml:"Name,omitempty"`
+	Addr1         string `xml:"Addr1"`
+	Addr2         string `xml:"Addr2,omitempty"`
+	Addr3         string `xml:"Addr3,omitempty"`
+	Addr4         string `xml:"Addr4,omitempty"`
+	Addr5         string `xml:"Addr5,omitempty"`
+	City          string `xml:"City"`
+	State         string `xml:"State"`
+	PostalCode    string `xml:"PostalCode"`
+	Country       string `xml:"Country"`
+	Note          string `xml:"Note,omitempty"`
+	DefaultShipTo string `xml:"DefaultShipTo,omitempty"`
 }
 
 //CreditCardTxnInputInfo holds the credit card input information for CreditCardTxnInfo
@@ -1236,6 +1239,35 @@ type CustomerMsgAddRq struct {
 	IsActive string `xml:"IsActive"`
 }
 
+//CustomerMsgQueryRq is the struct to hold data for querying for customer messages
+type CustomerMsgQueryRq struct {
+	XMLName           xml.Name         `xml:"CustomerMsgQueryRq,omitempty"`
+	MetaData          string           `xml:"metaData,attr,omitempty"`
+	ListID            string           `xml:"ListID,omitempty"`
+	FullName          string           `xml:"FullName,omitempty"`
+	MaxReturned       string           `xml:"MaxReturned,omitempty"`
+	ActiveStatus      string           `xml:"ActiveStatus,omitempty"` //ActiveStatus may have one of the following values: ActiveOnly [DEFAULT], InactiveOnly, All
+	FromModifiedDate  string           `xml:"FromModifiedDate,omitempty"`
+	ToModifiedDate    string           `xml:"ToModifiedDate,omitempty"`
+	NameFilter        *NameFilter      `xml:"NameFilter,omitempty"`
+	NameRangeFilter   *NameRangeFilter `xml:"NameRangeFilter,omitempty"`
+	IncludeRetElement []string         `xml:"IncludeRetElement,omitempty"`
+}
+
+//CustomerMsgQueryRs is the struct to hold data for the response to the customerMsgQuery call
+type CustomerMsgQueryRs struct {
+	XMLName xml.Name `xml:"CustomerMsgQueryRs"`
+	ResponseStatus
+	CustomerMsgRet []struct {
+		ListID       string `xml:"ListID"`
+		TimeCreated  string `xml:"TimeCreated"`
+		TimeModified string `xml:"TimeModified"`
+		EditSequence string `xml:"EditSequence"`
+		Name         string `xml:"Name"`
+		IsActive     string `xml:"IsActive"`
+	} `xml:"CustomerMsgRet"`
+}
+
 //QBShipToAddress holds a quickbooks customer's shipTo addresses
 type QBShipToAddress struct {
 	Address
@@ -1285,6 +1317,129 @@ type DataExtAddRq struct {
 	OtherDataExtType string `xml:"OtherDataExtType"` //may have one of the following values: Company -->
 	//<!-- END OR -->
 	DataExtValue string `xml:"DataExtValue"`
+}
+
+//CustomerModRs is the struct to hold data from the customer mod response
+type CustomerModRs struct {
+	XMLName xml.Name `xml:"CustomerModRs"`
+	ResponseStatus
+	CustomerRet struct {
+		ListID                    string               `xml:"ListID"`
+		TimeCreated               string               `xml:"TimeCreated"`
+		TimeModified              string               `xml:"TimeModified"`
+		EditSequence              string               `xml:"EditSequence"`
+		Name                      string               `xml:"Name"`
+		FullName                  string               `xml:"FullName"`
+		IsActive                  string               `xml:"IsActive"`
+		ClassRef                  AccountRef           `xml:"ClassRef"`
+		ParentRef                 AccountRef           `xml:"ParentRef"`
+		Sublevel                  string               `xml:"Sublevel"`
+		CompanyName               string               `xml:"CompanyName"`
+		Salutation                string               `xml:"Salutation"`
+		FirstName                 string               `xml:"FirstName"`
+		MiddleName                string               `xml:"MiddleName"`
+		LastName                  string               `xml:"LastName"`
+		JobTitle                  string               `xml:"JobTitle"`
+		BillAddress               Address              `xml:"BillAddress"`
+		BillAddressBlock          Address              `xml:"BillAddressBlock"`
+		ShipAddress               Address              `xml:"ShipAddress"`
+		ShipAddressBlock          Address              `xml:"ShipAddressBlock"`
+		ShipToAddress             []Address            `xml:"ShipToAddress"`
+		Phone                     string               `xml:"Phone"`
+		AltPhone                  string               `xml:"AltPhone"`
+		Fax                       string               `xml:"Fax"`
+		Email                     string               `xml:"Email"`
+		Cc                        string               `xml:"Cc"`
+		Contact                   string               `xml:"Contact"`
+		AltContact                string               `xml:"AltContact"`
+		AdditionalContactRef      AdditionalContactRef `xml:"AdditionalContactRef"`
+		ContactsRet               ContactsRet          `xml:"ContactsRet"`
+		CustomerTypeRef           AccountRef           `xml:"CustomerTypeRef"`
+		TermsRef                  AccountRef           `xml:"TermsRef"`
+		SalesRepRef               AccountRef           `xml:"SalesRepRef"`
+		Balance                   string               `xml:"Balance"`
+		TotalBalance              string               `xml:"TotalBalance"`
+		SalesTaxCodeRef           AccountRef           `xml:"SalesTaxCodeRef"`
+		ItemSalesTaxRef           AccountRef           `xml:"ItemSalesTaxRef"`
+		ResaleNumber              string               `xml:"ResaleNumber"`
+		AccountNumber             string               `xml:"AccountNumber"`
+		CreditLimit               string               `xml:"CreditLimit"`
+		PreferredPaymentMethodRef AccountRef           `xml:"PreferredPaymentMethodRef"`
+		CreditCardInfo            CreditCardInfo       `xml:"CreditCardInfo"`
+		JobStatus                 string               `xml:"JobStatus"`
+		JobStartDate              string               `xml:"JobStartDate"`
+		JobProjectedEndDate       string               `xml:"JobProjectedEndDate"`
+		JobEndDate                string               `xml:"JobEndDate"`
+		JobDesc                   string               `xml:"JobDesc"`
+		JobTypeRef                AccountRef           `xml:"JobTypeRef"`
+		Notes                     string               `xml:"Notes"`
+		AdditionalNotesRet        AdditionalNotes      `xml:"AdditionalNotesRet"`
+		PreferredDeliveryMethod   string               `xml:"PreferredDeliveryMethod"`
+		PriceLevelRef             AccountRef           `xml:"PriceLevelRef"`
+		ExternalGUID              string               `xml:"ExternalGUID"`
+		CurrencyRef               AccountRef           `xml:"CurrencyRef"`
+		DataExtRet                DataExtRet           `xml:"DataExtRet"`
+	} `xml:"CustomerRet"`
+	ErrorRecovery *ErrorRecovery `xml:"ErrorRecovery"`
+}
+
+//CustomerModRq isis the struct to hold data for the customerModRq call
+type CustomerModRq struct {
+	XMLName     xml.Name `xml:"CustomerModRq"`
+	CustomerMod struct {
+		ListID                    string                  `xml:"ListID,omitempty"`
+		EditSequence              string                  `xml:"EditSequence,omitempty"`
+		Name                      string                  `xml:"Name,omitempty"`
+		IsActive                  string                  `xml:"IsActive,omitempty"`
+		ClassRef                  *AccountRef             `xml:"ClassRef,omitempty"`
+		ParentRef                 *AccountRef             `xml:"ParentRef,omitempty"`
+		CompanyName               string                  `xml:"CompanyName,omitempty"`
+		Salutation                string                  `xml:"Salutation,omitempty"`
+		FirstName                 string                  `xml:"FirstName,omitempty"`
+		MiddleName                string                  `xml:"MiddleName,omitempty"`
+		LastName                  string                  `xml:"LastName,omitempty"`
+		JobTitle                  string                  `xml:"JobTitle,omitempty"`
+		BillAddress               *Address                `xml:"BillAddress,omitempty"`
+		ShipAddress               *Address                `xml:"ShipAddress,omitempty"`
+		ShipToAddress             *[]Address              `xml:"ShipToAddress,omitempty"`
+		Phone                     string                  `xml:"Phone,omitempty"`
+		AltPhone                  string                  `xml:"AltPhone,omitempty"`
+		Fax                       string                  `xml:"Fax,omitempty"`
+		Email                     string                  `xml:"Email,omitempty"`
+		Cc                        string                  `xml:"Cc,omitempty"`
+		Contact                   string                  `xml:"Contact,omitempty"`
+		AltContact                string                  `xml:"AltContact,omitempty"`
+		AdditionalContactRef      *[]AdditionalContactRef `xml:"AdditionalContactRef,omitempty"`
+		ContactsMod               *[]ContactsRet          `xml:"ContactsMod,omitempty"`
+		CustomerTypeRef           *AccountRef             `xml:"CustomerTypeRef,omitempty"`
+		TermsRef                  *AccountRef             `xml:"TermsRef,omitempty"`
+		SalesRepRef               *AccountRef             `xml:"SalesRepRef,omitempty"`
+		SalesTaxCodeRef           *AccountRef             `xml:"SalesTaxCodeRef,omitempty"`
+		ItemSalesTaxRef           *AccountRef             `xml:"ItemSalesTaxRef,omitempty"`
+		ResaleNumber              string                  `xml:"ResaleNumber,omitempty"`
+		AccountNumber             string                  `xml:"AccountNumber,omitempty"`
+		CreditLimit               string                  `xml:"CreditLimit,omitempty"`
+		PreferredPaymentMethodRef *AccountRef             `xml:"PreferredPaymentMethodRef,omitempty"`
+		CreditCardInfo            *CreditCardInfo         `xml:"CreditCardInfo,omitempty"`
+		JobStatus                 string                  `xml:"JobStatus,omitempty"` //may have one of the following values: Awarded, Closed, InProgress, None [DEFAULT], NotAwarded, Pending
+		JobStartDate              string                  `xml:"JobStartDate,omitempty"`
+		JobProjectedEndDate       string                  `xml:"JobProjectedEndDate,omitempty"`
+		JobEndDate                string                  `xml:"JobEndDate,omitempty"`
+		JobDesc                   string                  `xml:"JobDesc,omitempty"`
+		JobTypeRef                *AccountRef             `xml:"JobTypeRef,omitempty"`
+		Notes                     string                  `xml:"Notes,omitempty"`
+		AdditionalNotesMod        *AdditionalNotes        `xml:"AdditionalNotesMod,omitempty"`
+		PreferredDeliveryMethod   string                  `xml:"PreferredDeliveryMethod,omitempty"` //may have one of the following values: None [Default], Email, Fax
+		PriceLevelRef             *AccountRef             `xml:"PriceLevelRef,omitempty"`
+		CurrencyRef               *AccountRef             `xml:"CurrencyRef,omitempty"`
+	} `xml:"CustomerMod,omitempty"`
+	IncludeRetElement []string `xml:"IncludeRetElement,omitempty"`
+}
+
+//AdditionalNotes is the struct to hold data for the additional notes node
+type AdditionalNotes struct {
+	NoteID string `xml:"NoteID,omitempty"`
+	Note   string `xml:"Note,omitempty"`
 }
 
 //CustomerQueryRq is the struct to hold data for the customerQueryRq call
@@ -1381,21 +1536,32 @@ type CustomerRet struct {
 	CreditLimit               string                 `xml:"CreditLimit"`
 	PreferredPaymentMethodRef AccountRef             `xml:"PreferredPaymentMethodRef"`
 	CreditCardInfo            CreditCardInfo         `xml:"CreditCardInfo"`
+	JobStatus                 string                 `xml:"JobStatus"`
+	JobStartDate              string                 `xml:"JobStartDate"`
+	JobProjectedEndDate       string                 `xml:"JobProjectedEndDate"`
+	JobEndDate                string                 `xml:"JobEndDate"`
+	JobDesc                   string                 `xml:"JobDesc"`
+	JobTypeRef                AccountRef             `xml:"JobTypeRef"`
+	Notes                     string                 `xml:"Notes"`
+	AdditionalNotesRet        []AdditionalNotes      `xml:"AdditionalNotesRet"`
+	PreferredDeliveryMethod   string                 `xml:"PreferredDeliveryMethod"`
+	PriceLevelRef             AccountRef             `xml:"PriceLevelRef"`
+	CurrencyRef               AccountRef             `xml:"CurrencyRef"`
 }
 
 //ContactsRet is the struct to hold data for customer query responses
 type ContactsRet struct {
-	ListID               string                 `xml:"ListID"`
-	TimeCreated          string                 `xml:"TimeCreated"`
-	TimeModified         string                 `xml:"TimeModified"`
-	EditSequence         string                 `xml:"EditSequence"`
-	Contact              string                 `xml:"Contact"`
-	Salutation           string                 `xml:"Salutation"`
-	FirstName            string                 `xml:"FirstName"`
-	MiddleName           string                 `xml:"MiddleName"`
-	LastName             string                 `xml:"LastName"`
-	JobTitle             string                 `xml:"JobTitle"`
-	AdditionalContactRef []AdditionalContactRef `xml:"AdditionalContactRef"`
+	ListID               string                  `xml:"ListID,omitempty"`
+	TimeCreated          string                  `xml:"TimeCreated,omitempty"`
+	TimeModified         string                  `xml:"TimeModified,omitempty"`
+	EditSequence         string                  `xml:"EditSequence,omitempty"`
+	Contact              string                  `xml:"Contact,omitempty"`
+	Salutation           string                  `xml:"Salutation,omitempty"`
+	FirstName            string                  `xml:"FirstName,omitempty"`
+	MiddleName           string                  `xml:"MiddleName,omitempty"`
+	LastName             string                  `xml:"LastName,omitempty"`
+	JobTitle             string                  `xml:"JobTitle,omitempty"`
+	AdditionalContactRef *[]AdditionalContactRef `xml:"AdditionalContactRef,omitempty"`
 }
 
 /*

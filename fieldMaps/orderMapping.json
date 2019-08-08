@@ -13,7 +13,7 @@
 	],
 	"CustomerMsgRef.FullName": [
 		{
-			"data": "",
+			"data": "message",
 			"mappedField": true
 		}
 	],

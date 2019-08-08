@@ -36,7 +36,7 @@ func CustomerAddQB(workCTX WorkCTX) {
 		//Add the SalesReceiptQBXML to th slice for use in QBXMLMsgsRq, the top level template
 		qbxmlWork.AppendWork(templateBuff.String())
 
-		//Prepare the DataExtAdds //TODO make universal rith now its only for macsTieDowns
+		//Prepare the DataExtAdds
 		if cfg.DataExtActive {
 			var dExts = DataExtAddQB(tempReceiptAdd.DefMacro)
 			qbxmlWork.AppendWork(dExts)
@@ -72,7 +72,7 @@ func CustomerAddQB(workCTX WorkCTX) {
 		//Add the SalesOrderQBXML to th slice for use in QBXMLMsgsRq, the top level template
 		qbxmlWork.AppendWork(templateBuff.String())
 
-		//Prepare the DataExtAdds //TODO make universal rith now its only for macsTieDowns
+		//Prepare the DataExtAdds
 		if cfg.DataExtActive {
 			var dExts = DataExtAddQB(tempOrderAdd.DefMacro)
 			qbxmlWork.AppendWork(dExts)
@@ -114,10 +114,20 @@ func CustomerAddQB(workCTX WorkCTX) {
 		//qbShipTo.DefaultShipTo =
 		qbShipTos[i] = qbShipTo
 	}
+	customer.ShipToAddress = append(customer.ShipToAddress, qbShipTos...)
 	customer.CustomerTypeRef.FullName = fieldMap["CustomerTypeRef.FullName"].Display()
 	customer.SalesRepRef.FullName = fieldMap["SalesRepRef.FullName"].Display()
 
 	customer.Name = fieldMap["Name"].Display(workCTX.Order)
+	//If NoResendOrder is true we want to add the customer name from the passed in order or receipt struct
+	if workCTX.NoResendOrder {
+		switch workCTX.Data.(type) {
+		case SalesReceiptAdd:
+			customer.Name = workCTX.Data.(SalesReceiptAdd).CustomerRef.FullName
+		case SalesOrderAdd:
+			customer.Name = workCTX.Data.(SalesOrderAdd).CustomerRef.FullName
+		}
+	}
 	customer.AccountNumber = fieldMap["AccountNumber"].Display(workCTX.Order)
 	customer.Email = fieldMap["Email"].Display(workCTX.Order)
 	customer.Phone = CheckPath("billing.phone", workCTX.Order)
@@ -133,10 +143,25 @@ func CustomerAddQB(workCTX WorkCTX) {
 	customer.TermsRef.FullName = fieldMap["TermsRef.FullName"].Display()
 	customer.PriceLevelRef.FullName = fieldMap["PriceLevelRef.FullName"].Display()
 
+	var ccInfo = CreditCardInfo{}
+	ccInfo.CreditCardNumber = fieldMap["CreditCardInfo.CreditCardNumber"].Display(workCTX.Order)
+	ccInfo.ExpirationMonth = fieldMap["CreditCardInfo.ExpirationMonth"].Display(workCTX.Order)
+	ccInfo.ExpirationYear = fieldMap["CreditCardInfo.ExpirationYear"].Display(workCTX.Order)
+	ccInfo.NameOnCard = fieldMap["CreditCardInfo.NameOnCard"].Display(workCTX.Order)
+	ccInfo.CreditCardAddress = fieldMap["CreditCardInfo.CreditCardAddress"].Display(workCTX.Order)
+	ccInfo.CreditCardPostalCode = fieldMap["CreditCardInfo.CreditCardPostalCode"].Display(workCTX.Order)
+	customer.CreditCardInfo = ccInfo
+
 	LoadTemplate(&tPath, &customer, &templateBuff)
 	err = xml.EscapeText(&escapedQBXML, templateBuff.Bytes())
 	if err != nil {
 		Log.WithFields(logrus.Fields{"error": err}).Error("Error Escaping template in ImportCV3ItemsToQB")
+	}
+	//If NoResendOrder is true we want to send the customer add on workChan as opposed to workInsertChan and do not resend the order
+	if workCTX.NoResendOrder {
+		ErrLog.Error("noResendOrder")
+		workChan <- WorkCTX{Work: escapedQBXML.String(), Data: workCTX.Data, Order: workCTX.Order, Type: "customerAddRq", Attempted: workCTX.Attempted}
+		return
 	}
 	//Send prepaired QBXML to the workInsertChan
 	workInsertChan <- WorkCTX{Work: escapedQBXML.String(), Data: workCTX.Data, Order: workCTX.Order, Type: "customerAddRq", Attempted: workCTX.Attempted}
