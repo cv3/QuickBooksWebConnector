@@ -97,6 +97,12 @@
 			"mappedField": true
 		}
 	],
+	"Email":[
+		{
+			"data":"billing.email",
+			"mappedField":true
+		}
+	],
 	"IsToBePrinted": [
 		{
 			"data": "",

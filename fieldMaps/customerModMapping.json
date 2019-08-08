@@ -1,0 +1,410 @@
+{
+    "ListID": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "EditSequence": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "Name": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "IsActive": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "ClassRef.ListID": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "ClassRef.FullName": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "ParentRef.ListID": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "ParentRef.FullName": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "CompanyName": [
+      {
+        "data": "billing.company",
+        "mappedField": true
+      }
+    ],
+    "Salutation": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "FirstName": [
+      {
+        "data": "billing.firstName",
+        "mappedField": true
+      }
+    ],
+    "MiddleName": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "LastName": [
+      {
+        "data": "billing.lastName",
+        "mappedField": true
+      }
+    ],
+    "JobTitle": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "Phone": [
+      {
+        "data": "billing.phone",
+        "mappedField": true
+      }
+    ],
+    "AltPhone": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "Fax": [
+      {
+        "data": "billing.fax",
+        "mappedField": true
+      }
+    ],
+    "Email": [
+      {
+        "data": "billing.email",
+        "mappedField": true
+      }
+    ],
+    "Cc": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "Contact": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "AltContact": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "AdditionalContactRef.ContactName": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "AdditionalContactRef.ContactValue": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "ContactsMod.ListID": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "ContactsMod.EditSequence": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "ContactsMod.Salutation": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "ContactsMod.FirstName": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "ContactsMod.MiddleName": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "ContactsMod.LastName": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "ContactsMod.JobTitle": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "ContactsMod.AdditionalContactRef.ContactName": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "ContactsMod.AdditionalContactRef.ContactValue": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "CustomerTypeRef.ListID": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "CustomerTypeRef.FullName": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "TermsRef.ListID": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "TermsRef.FullName": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "SalesRepRef.ListID": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "SalesRepRef.FullName": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "SalesTaxCodeRef.ListID": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "SalesTaxCodeRef.FullName": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "ItemSalesTaxRef.ListID": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "ItemSalesTaxRef.FullName": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "ResaleNumber": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "AccountNumber": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "CreditLimit": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "PreferredPaymentMethodRef.ListID": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "PreferredPaymentMethodRef.FullName": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "CreditCardInfo.CreditCardNumber": [
+      {
+        "data": "billing.CCInfo.CCNum",
+        "mappedField": true
+      }
+    ],
+    "CreditCardInfo.ExpirationMonth": [
+      {
+        "data": "billing.CCInfo.CCExpM",
+        "mappedField": true
+      }
+    ],
+    "CreditCardInfo.ExpirationYear": [
+      {
+        "data": "billing.CCInfo.CCExpY",
+        "mappedField": true
+      }
+    ],
+    "CreditCardInfo.NameOnCard": [
+      {
+        "data": "billing.CCInfo.CCName",
+        "mappedField": true
+      }
+    ],
+    "CreditCardInfo.CreditCardAddress": [
+      {
+        "data": "billing.address1",
+        "mappedField": true
+      }
+    ],
+    "CreditCardInfo.CreditCardPostalCode": [
+      {
+        "data": "billing.zip",
+        "mappedField": true
+      }
+    ],
+    "JobStatus": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "JobStartDate": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "JobProjectedEndDate": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "JobEndDate": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "JobDesc": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "JobTypeRef.ListID": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "JobTypeRef.FullName": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "Notes": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "AdditionalNotesMod.NoteID": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "AdditionalNotesMod.Note": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "PreferredDeliveryMethod": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "PriceLevelRef.ListID": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "PriceLevelRef.FullName": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "CurrencyRef.ListID": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ],
+    "CurrencyRef.FullName": [
+      {
+        "data": "",
+        "mappedField": true
+      }
+    ]
+  }

@@ -109,10 +109,10 @@
                         <FullName>{{.PreferredPaymentMethodRef.FullName}}</FullName>{{end}}
                     </PreferredPaymentMethodRef>{{end}}{{if .CreditCardInfo.CreditCardNumber}}
                     <CreditCardInfo>
-                        <CreditCardNumber>{{.CeditCardInfo.CreditCardNumber}}</CreditCardNumber>{{if .CeditCardInfo.ExpirationMonth}}
-                        <ExpirationMonth>{{.CeditCardInfo.ExpirationMonth}}</ExpirationMonth>{{end}}{{if .CeditCardInfo.ExpirationYear}}
-                        <ExpirationYear>{{.CeditCardInfo.ExpirationYear}}</ExpirationYear>{{end}}{{if .CeditCardInfo.NameOnCard}}
-                        <NameOnCard>{{.CeditCardInfo.NameOnCard}}NameOnCard>{{end}}{{if .CreditCardInfo.CreditCardAddress}}
+                        <CreditCardNumber>{{.CreditCardInfo.CreditCardNumber}}</CreditCardNumber>{{if .CreditCardInfo.ExpirationMonth}}
+                        <ExpirationMonth>{{.CreditCardInfo.ExpirationMonth}}</ExpirationMonth>{{end}}{{if .CreditCardInfo.ExpirationYear}}
+                        <ExpirationYear>{{.CreditCardInfo.ExpirationYear}}</ExpirationYear>{{end}}{{if .CreditCardInfo.NameOnCard}}
+                        <NameOnCard>{{.CreditCardInfo.NameOnCard}}</NameOnCard>{{end}}{{if .CreditCardInfo.CreditCardAddress}}
                         <CreditCardAddress>{{.CreditCardInfo.CreditCardAddress}}</CreditCardAddress>{{end}}{{if .CreditCardInfo.CreditCardPostalCode}}
                         <CreditCardPostalCode>{{.CreditCardInfo.CreditCardPostalCode}}</CreditCardPostalCode>{{end}}
                     </CreditCardInfo>{{end}}{{if .JobStatus}}

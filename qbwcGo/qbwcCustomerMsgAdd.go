@@ -7,6 +7,44 @@ import (
 	"github.com/Sirupsen/logrus"
 )
 
+/*TODO
+//CustomerMsgAddQBNew will add a customerMsgRef to the quickbooks database
+func CustomerMsgAddQBNew(msg string) {
+	var err error
+	var escapedQBXML = bytes.Buffer{}
+	var templateBuff = bytes.Buffer{}
+	var tPath = `./templates/qbCustomerMsgAdd.t`
+	var customerMsg = CustomerMsgAddRq{}
+	var workCTX = WorkCTX{}
+
+	customerMsg.Name = msg
+
+	//Prepare the DataExtAdds
+	if cfg.DataExtActive {
+		var dExts = DataExtAddQB(tempReceiptAdd.DefMacro)
+		qbxmlWork = append(qbxmlWork, dExts)
+	}
+
+	//Reset the template buffer, and build and execute the toplevel QBXML template with the preceeding templates as data
+	templateBuff.Reset()
+	tPath = "./templates/QBXMLMsgsRq.t"
+	LoadTemplate(&tPath, qbxmlWork, &templateBuff)
+	err = xml.EscapeText(&escapedQBXML, templateBuff.Bytes())
+	if err != nil {
+		Log.WithFields(logrus.Fields{"error": err}).Error("Error Escaping template xml in CustomerAddQB")
+		ErrLog.WithFields(logrus.Fields{"error": err}).Error("Error Escaping template xml in CustomerAddQB")
+	}
+	//add the QBXML to the work slice
+	workCTX.Work = escapedQBXML.String()
+
+	LoadTemplate(&tPath, &customerMsg, &templateBuff)
+	err = xml.EscapeText(&escapedQBXML, templateBuff.Bytes())
+	if err != nil {
+		Log.WithFields(logrus.Fields{"error": err}).Error("Error Escaping template in CustomerMsgAddQB")
+	}
+}
+*/
+
 //CustomerMsgAddQB will add a customerMsgRef to the quickbooks database
 func CustomerMsgAddQB(workCTX WorkCTX) {
 	var err error
@@ -99,6 +137,4 @@ func CustomerMsgAddQB(workCTX WorkCTX) {
 	}
 	//Send prepaired QBXML to the workInsertChan
 	workInsertChan <- WorkCTX{Work: escapedQBXML.String(), Data: workCTX.Data, Order: workCTX.Order, Type: "customerAddRq"}
-	//insertWG.Done()
-	workInsertChan <- workCTX
 }

@@ -98,5 +98,81 @@
             "data": "billing.country",
             "mappedField": true
         }
+    ],
+    "ShipToAddress.Name": [
+        {
+            "data": "firstName",
+            "mappedField": true
+        },
+        {
+            "data": " ",
+            "mappedField": false
+        },
+        {
+            "data": "lastName",
+            "mappedField": true
+        }
+    ],
+    "ShipToAddress.Addr1": [
+        {
+            "data": "firstName",
+            "mappedField": true
+        },
+        {
+            "data": " ",
+            "mappedField": false
+        },
+        {
+            "data": "lastName",
+            "mappedField": true
+        }
+    ],
+    "ShipToAddress.Addr2": [
+        {
+            "data": "address1",
+            "mappedField": true
+        }
+    ],
+    "ShipToAddress.Addr3": [
+        {
+            "data": "address2",
+            "mappedField": true
+        }
+    ],
+    "ShipToAddress.City": [
+        {
+            "data": "city",
+            "mappedField": true
+        }
+    ],
+    "ShipToAddress.State": [
+        {
+            "data": "state",
+            "mappedField": true
+        }
+    ],
+    "ShipToAddress.PostalCode": [
+        {
+            "data": "zip",
+            "mappedField": true
+        }
+    ],
+    "ShipToAddress.Country": [
+        {
+            "data": "country",
+            "mappedField": true
+        }
+    ],
+    "ShipToAddress.Note": [
+        {
+            "data": "",
+            "mappedField": true
+        }
+    ],
+    "ShipToAddress.DefaultShipTo": [
+        {
+            "data": "",
+            "mappedField": true
+        }
     ]
 }

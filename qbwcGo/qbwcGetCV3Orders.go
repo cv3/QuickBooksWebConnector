@@ -7,6 +7,7 @@ import (
 	"html"
 	"io/ioutil"
 	"math/rand"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/amazingfly/cv3go"
 )
 
+var customerNameCharLimit = 41
 var addrCharLimit = 41
 var cityCharLimit = 31
 var stateCharLimit = 21
@@ -39,6 +41,7 @@ func GetCV3Orders() { //(workChan chan string, doneChan chan bool) {
 	api.SetCredentials(cfg.CV3Credentials.User, cfg.CV3Credentials.Pass, cfg.CV3Credentials.ServiceID) //("connector", "#CV3C0nn3ct0r!a", "6c383bc896")
 	api.GetOrdersNew()
 	//api.GetOrdersRange("50564", "50564") //("25678", "25678") //("7152", "7152") //"7142")
+
 	var d = api.Execute(true)
 	Log.Debug(string(d))
 	ord, err := gabs.ParseJSON(d)
@@ -52,14 +55,7 @@ func GetCV3Orders() { //(workChan chan string, doneChan chan bool) {
 		if err != nil {
 			fmt.Println(err)
 		}
-		for i := 0; i < 10; i++ {
-			for j := 0; j < 100; j++ {
-				ErrLog.Error(ordTrim.String())
-				time.Sleep(1111)
-			}
-		}*/
-	//cv3go.PrintToFile([]byte(ordTrim.StringIndent("", "  ")), "./percentDiscount.json")
-	//os.Exit(1)
+	*/
 	switch strings.ToLower(cfg.OrderType) {
 	case "salesreceipt":
 		MakeSalesReceipt(&workCount, &workCTX, ordTrim)
@@ -71,7 +67,6 @@ func GetCV3Orders() { //(workChan chan string, doneChan chan bool) {
 		Log.WithFields(logrus.Fields{"OrderType": cfg.OrderType}).Error("Error in GetCV3Orders, invalid order type in config")
 		ErrLog.WithFields(logrus.Fields{"OrderType": cfg.OrderType}).Error("Error in GetCV3Orders, invalid order type in config")
 	}
-
 	if workCount < 1 {
 		//workChan <- WorkCTX{Work: "", Type: "NoOp"}
 		if CheckPath("CV3Data.error", ord) != "" {
@@ -83,7 +78,6 @@ func GetCV3Orders() { //(workChan chan string, doneChan chan bool) {
 			Log.WithFields(logrus.Fields{"Json": ord.String()}).Info("No new orders in CV3 order return")
 		}
 	}
-
 }
 
 //MakeSalesReceipt takes the cv3 order and turns it into a qbxml salesReceiptAdd
@@ -97,10 +91,11 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 	var fieldMap = ReadFieldMapping("./fieldMaps/receiptMapping.json")
 	var addrFieldMap = ReadFieldMapping("./fieldMaps/addressMapping.json")
 
+	sort.SliceStable(oMapper, func(i, j int) bool { return CheckPath("orderID", oMapper[i]) < CheckPath("orderID", oMapper[j]) })
+
 	//iterate over the orders, then the shiptos, as each shipto needs to be handled as a seperate sales receipt in QB
 	for _, o := range oMapper {
-		//cv3go.PrintToFile(o.Bytes(), CheckPath("orderID", o))
-		//fmt.Println(CheckPath("orderID", o))
+
 		var orderDiscount = new(DiscountCTX)
 		orderDiscount.TotalDiscount = ParseFloat(CheckPath("totalOrderDiscount.totalDiscount", o))
 		orderDiscount.RemainingDiscount = orderDiscount.TotalDiscount
@@ -117,6 +112,16 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			ShipToLength: len(shipToMapper),
 		}
 		for shipToIndex, shipTo := range shipToMapper {
+			var customerListID string
+			var customerQueryStatusCode int
+			//If the billing name is not paypal, so use it as the customers name
+			if !strings.Contains(strings.ToLower(fieldMap["CustomerRef.FullName"].Display(o)), "paypal") {
+				customerListID, customerQueryStatusCode, err = CustomerQueryQB(o, shipTo, fieldMap["CustomerRef.FullName"].Display(o), strings.ToLower(fieldMap["Email"].Display(o)))
+				if err != nil && customerQueryStatusCode == 3 {
+					Log.WithFields(logrus.Fields{"Error": err}).Error("Error in customerQuery")
+					ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error in customerQuery")
+				}
+			}
 			var qbReceiptAdd = SalesReceiptAdd{} //object to hold current shipto information
 			qbReceiptAdd.DiscountCTX = orderDiscount
 			qbReceiptAdd.DiscountCTX.SubTotal = 0.0
@@ -147,9 +152,22 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			}
 			qbReceiptAdd.FOB = fieldMap["FOB"].Display(o)
 
+			var customerMsgQueryStatusCode int
 			qbReceiptAdd.CustomerMsgRef.FullName = ConvertCustomerMsgRef(fieldMap["CustomerMsgRef.FullName"].Display(shipTo))
+			if qbReceiptAdd.CustomerMsgRef.FullName != "" {
+				var customerMsgListID string
+				customerMsgListID, customerMsgQueryStatusCode, err = CustomerMsgQueryQB(o, shipTo, qbReceiptAdd.CustomerMsgRef.FullName)
+				if err != nil {
+					Log.WithFields(logrus.Fields{"Error": err}).Error("Error in customerMsgQueryQB")
+					ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error in customerMsgQueryQB")
+				}
+				if customerMsgListID != "" {
+					qbReceiptAdd.CustomerMsgRef.FullName = ""
+					qbReceiptAdd.CustomerMsgRef.ListID = customerMsgListID
+				}
+			}
 
-			qbReceiptAdd.CustomerMsgRef.ListID = fieldMap["CustomerMsgRef.ListID"].Display(shipTo)
+			//qbReceiptAdd.CustomerMsgRef.ListID = fieldMap["CustomerMsgRef.ListID"].Display(shipTo)
 			qbReceiptAdd.CustomerSalesTaxCodeRef.FullName = fieldMap["CustomerSalesTaxCodeRef.FullName"].Display(o)
 			qbReceiptAdd.CustomerSalesTaxCodeRef.ListID = fieldMap["CustomerSalesTaxCodeRef.ListID"].Display(o)
 			qbReceiptAdd.ItemSalesTaxRef.FullName = fieldMap["ItemSalesTaxRef.FullName"].Display(o)
@@ -188,6 +206,7 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			//If the billing name is not paypal, so use it as the customers name
 			if !strings.Contains(strings.ToLower(CheckPath("billing.firstName", o)), "paypal") {
 				qbReceiptAdd.CustomerRef.FullName = fieldMap["CustomerRef.FullName"].Display(o) //BuildName(CheckPath("billing.firstName", o), CheckPath("billing.lastName", o))
+				qbReceiptAdd.CustomerRef.ListID = customerListID
 			} //else bliiling firstname is paypal, so do not add any customer info
 			qbReceiptAdd.ShipDate = fieldMap["ShipDate"].Display(shipTo)
 
@@ -267,6 +286,20 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 				qbReceiptAdd.DefMacro = txnBuff.String()
 			}
 
+			switch customerQueryStatusCode {
+			case 0: // customer record was matched, we have the lisID, so remove the customerRef.FullName to make sure the ListID is used by QB
+				qbReceiptAdd.CustomerRef.FullName = ""
+				break
+			case 1: //no customer records matched the given customer name, create a new customer
+				//Leave the customer name alone, to be added the way it is
+				Log.Debug("Completely new customer is the answer here")
+				break
+			case 2: //customer records matched the given customer name but no emails matched the customers email, so create a new customer with the email appended to the end of the name
+				qbReceiptAdd.CustomerRef.FullName = FieldCharLimit(qbReceiptAdd.CustomerRef.FullName+" "+strings.ToLower(fieldMap["Email"].Display(o)), customerNameCharLimit)
+				Log.WithFields(logrus.Fields{"FullName": qbReceiptAdd.CustomerRef.FullName, "Email": strings.ToLower(fieldMap["Email"].Display(o))}).Debug("Resetting customerRef.FullName")
+				break
+			}
+
 			var templateBuff = bytes.Buffer{}
 			var escapedQBXML = bytes.Buffer{}
 			var tPath = `./templates/qbReceiptAdd.t`
@@ -296,6 +329,30 @@ func MakeSalesReceipt(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Conta
 			workCTX.Data = qbReceiptAdd
 			workCTX.Order = o
 			workCTX.Type = "SalesReceiptAdd"
+			switch customerQueryStatusCode {
+			case 0:
+				//do nothing as a customer record was matched
+				break
+			case 1: //no customer records matched the given customer name, create a new customer
+				//Do not resend the order in CustomerAddQB
+				workCTX.NoResendOrder = true
+				Log.Debug("Completly new customer Add")
+				CustomerAddQB(*workCTX)
+				break
+			case 2: //customer records matched the given customer name but no emails matched the customers email, so create a new customer with the email appended to the end of the name
+				//Do not resend the order in CustomerAddQB
+				workCTX.NoResendOrder = true
+				Log.Debug("Adding customer with appended email")
+				CustomerAddQB(*workCTX)
+				break
+			}
+
+			switch customerMsgQueryStatusCode {
+			case 0:
+				//Do nothing, the customerMsg was found
+			case 1: //Add customerMsg
+				CustomerMsgAddQB(*workCTX)
+			}
 			workChan <- *workCTX
 
 			shipToSuccessChan <- ShipToSuccessTracker{
@@ -316,6 +373,8 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 		Log.WithFields(logrus.Fields{"Error": err, "OrdersMapper": ordersMapper}).Error("Error getting ordersMapper Children in MakeSalesOrder")
 		ErrLog.WithFields(logrus.Fields{"Error": err, "OrdersMapper": ordersMapper}).Error("Error getting ordersMapper Children in MakeSalesOrder")
 	} //load dynamic field map
+	sort.SliceStable(oMapper, func(i, j int) bool { return CheckPath("orderID", oMapper[i]) < CheckPath("orderID", oMapper[j]) })
+
 	var fieldMap = ReadFieldMapping("./fieldMaps/orderMapping.json")
 	var addrFieldMap = ReadFieldMapping("./fieldMaps/addressMapping.json")
 	//iterate over the orders, then the shiptos, as each shipto needs to be handled as a seperate sales receipt in QB
@@ -359,11 +418,24 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 			}
 			qbOrderAdd.FOB = fieldMap["FOB"].Display(o)
 
-			qbOrderAdd.CustomerMsgRef.FullName = fieldMap["CustomerMsgRef"].Display(shipTo)
+			qbOrderAdd.CustomerMsgRef.FullName = fieldMap["CustomerMsgRef.FullName"].Display(shipTo)
+			var customerMsgQueryStatusCode int
+			if qbOrderAdd.CustomerMsgRef.FullName != "" {
+				var customerMsgListID string
+				customerMsgListID, customerMsgQueryStatusCode, err = CustomerMsgQueryQB(o, shipTo, qbOrderAdd.CustomerMsgRef.FullName)
+				if err != nil {
+					Log.WithFields(logrus.Fields{"Error": err}).Error("Error in customerMsgQueryQB")
+					ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error in customerMsgQueryQB")
+				}
+				if customerMsgListID != "" {
+					qbOrderAdd.CustomerMsgRef.FullName = ""
+					qbOrderAdd.CustomerMsgRef.ListID = customerMsgListID
+				}
+			}
 
 			qbOrderAdd.CustomerSalesTaxCodeRef.FullName = ConvertCustomerMsgRef(fieldMap["CustomerMsgRef.FullName"].Display(shipTo))
 
-			qbOrderAdd.CustomerMsgRef.ListID = fieldMap["CustomerMsgRef.ListID"].Display(shipTo)
+			//qbOrderAdd.CustomerMsgRef.ListID = fieldMap["CustomerMsgRef.ListID"].Display(shipTo)
 
 			qbOrderAdd.CustomerSalesTaxCodeRef.ListID = fieldMap["CustomerSalesTaxCodeRef.ListID"].Display(o)
 			qbOrderAdd.ItemSalesTaxRef.FullName = fieldMap["ItemSalesTaxRef.FullName"].Display(o)
@@ -404,13 +476,6 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 			qbOrderAdd.ShipMethodRef.ListID = fieldMap["ShipMethodRef.ListID"].Display(shipTo)
 			qbOrderAdd.Memo = fieldMap["Memo"].Display(o)
 
-			//If the billing name is not paypal, use it as the customers name
-			if !strings.Contains(strings.ToLower(CheckPath("billing.firstName", o)), "paypal") {
-				//No Comma for Mac's Tie downs
-				qbOrderAdd.CustomerRef.FullName = fieldMap["CustomerRef.FullName"].Display(o) //BuildName(CheckPath("billing.firstName", o), CheckPath("billing.lastName", o))
-			} else { //billing firstName is paypal, so just add paypal as a CustomerRef is required for a SalesOrderAdd
-				//qbOrderAdd.CustomerRef.FullName = CheckPath("billing.firstName", o)
-			}
 			qbOrderAdd.ShipDate = fieldMap["ShipDate"].Display(shipTo)
 
 			//Start shipping address
@@ -471,6 +536,35 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 				qbOrderAdd.DefMacro = txnBuff.String()
 			}
 
+			var customerListID string
+			var customerQueryStatusCode int
+			//If the billing name is not paypal, so use it as the customers name
+			if !strings.Contains(strings.ToLower(fieldMap["CustomerRef.FullName"].Display(o)), "paypal") {
+				customerListID, customerQueryStatusCode, err = CustomerQueryQB(o, shipTo, fieldMap["CustomerRef.FullName"].Display(o), strings.ToLower(fieldMap["Email"].Display(o)))
+				if err != nil && customerQueryStatusCode == 3 {
+					Log.WithFields(logrus.Fields{"Error": err}).Error("Error in customerQuery")
+					ErrLog.WithFields(logrus.Fields{"Error": err}).Error("Error in customerQuery")
+				}
+				ErrLog.WithFields(logrus.Fields{"ListID": customerListID, "customer query status code": customerQueryStatusCode}).Error("Customer query returned in getCV3Orders")
+
+				qbOrderAdd.CustomerRef.FullName = fieldMap["CustomerRef.FullName"].Display(o)
+				qbOrderAdd.CustomerRef.ListID = customerListID
+			}
+
+			switch customerQueryStatusCode {
+			case 0: // customer record was matched, we have the lisID, so remove the customerRef.FullName to make sure the ListID is used by QB
+				qbOrderAdd.CustomerRef.FullName = ""
+				break
+			case 1: //no customer records matched the given customer name, create a new customer
+				//Leave the customer name alone, to be added the way it is
+				ErrLog.Error("Completely new customer is the answer here")
+				break
+			case 2: //customer records matched the given customer name but no emails matched the customers email, so create a new customer with the email appended to the end of the name
+				qbOrderAdd.CustomerRef.FullName = FieldCharLimit(qbOrderAdd.CustomerRef.FullName+" "+strings.ToLower(fieldMap["Email"].Display(o)), customerNameCharLimit)
+				Log.WithFields(logrus.Fields{"FullName": qbOrderAdd.CustomerRef.FullName, "Email": strings.ToLower(fieldMap["Email"].Display(o))}).Debug("Resetting customerRef.FullName")
+				break
+			}
+
 			//Build the templates, add them to the top level template and then xml.Escape them
 			var templateBuff = bytes.Buffer{}
 			var escapedQBXML = bytes.Buffer{}
@@ -500,6 +594,31 @@ func MakeSalesOrder(workCount *int, workCTX *WorkCTX, ordersMapper *gabs.Contain
 			workCTX.Data = qbOrderAdd
 			workCTX.Order = o
 			workCTX.Type = "SalesOrderAdd"
+
+			switch customerQueryStatusCode {
+			case 0:
+				//do nothing as a customer record was matched
+				break
+			case 1: //no customer records matched the given customer name, create a new customer
+				//Do not resend the order in CustomerAddQB
+				workCTX.NoResendOrder = true
+				Log.Debug("Completly new customer Add")
+				CustomerAddQB(*workCTX)
+				break
+			case 2: //customer records matched the given customer name but no emails matched the customers email, so create a new customer with the email appended to the end of the name
+				//Do not resend the order in CustomerAddQB
+				workCTX.NoResendOrder = true
+				Log.Debug("Adding customer with appended email")
+				CustomerAddQB(*workCTX)
+				break
+			}
+
+			switch customerMsgQueryStatusCode {
+			case 0:
+				//Do nothing, the customerMsg was found
+			case 1: //Add customerMsg
+				CustomerMsgAddQB(*workCTX)
+			}
 			workChan <- *workCTX
 
 			shipToSuccessChan <- ShipToSuccessTracker{
