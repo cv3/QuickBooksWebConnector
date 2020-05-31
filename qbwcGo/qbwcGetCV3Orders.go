@@ -38,7 +38,7 @@ func GetCV3Orders() { //(workChan chan string, doneChan chan bool) {
 	//Call CV3 for the desired orders
 	var api = cv3go.NewApi()
 	//api.Debug = true
-	api.SetCredentials(cfg.CV3Credentials.User, cfg.CV3Credentials.Pass, cfg.CV3Credentials.ServiceID) //("connector", "#CV3C0nn3ct0r!a", "6c383bc896")
+	api.SetCredentials(cfg.CV3Credentials.User, cfg.CV3Credentials.Pass, cfg.CV3Credentials.ServiceID) //("username", "password", "webserviceID")
 	api.GetOrdersNew()
 	//api.GetOrdersRange("50564", "50564") //("25678", "25678") //("7152", "7152") //"7142")
 
