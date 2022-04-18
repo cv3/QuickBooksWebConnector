@@ -10,7 +10,7 @@ func ConfirmCV3Order(orderID string) {
 		//Call CV3 for the desired order confirmation
 		var api = cv3go.NewApi()
 		//api.Debug = true
-		api.SetCredentials(cfg.CV3Credentials.User, cfg.CV3Credentials.Pass, cfg.CV3Credentials.ServiceID) //("connector", "#CV3C0nn3ct0r!a", "6c383bc896")
+		api.SetCredentials(cfg.CV3Credentials.User, cfg.CV3Credentials.Pass, cfg.CV3Credentials.ServiceID)
 		api.OrderConfirm(orderID)
 		api.Execute()
 	}
