@@ -66,7 +66,7 @@ func UpdateCV3Items(items ItemQueryRs) error {
 			ErrLog.WithFields(logrus.Fields{"error": err}).Error("error marshaling cv3 products inUpdateCV3Items ")
 		}
 		api := cv3go.NewApi()
-		api.SetCredentials(cfg.CV3Credentials.User, cfg.CV3Credentials.Pass, cfg.CV3Credentials.ServiceID)***REMOVED***
+		api.SetCredentials(cfg.CV3Credentials.User, cfg.CV3Credentials.Pass, cfg.CV3Credentials.ServiceID) //("connector", "#CV3C0nn3ct0r!a", "6c383bc896")
 		//api.Debug = true
 		api.PushInventory(string(b), false)
 		b = api.Execute()
